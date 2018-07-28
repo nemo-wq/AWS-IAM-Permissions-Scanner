@@ -35,63 +35,53 @@ for user in userList[0]['UserDetailList']:
         print(" - No Inline Policies found for", Fore.BLUE + user['UserName'] + Fore.RESET)
     else:
         print(" - User Inline Policies: ", user_inline_policies['PolicyNames'])
-        # TODO - Parse User Inline Policies
-
-    if len(user_inline_policies['PolicyNames']) == 0:
+        for user_inline_policy in user_inline_policies['PolicyNames']:
+            inline_policy_document = client.get_user_policy(UserName=user['UserName'],PolicyName=user_inline_policy)
+            print("           + Policy Statement for Inline Policy:" , Fore.LIGHTBLUE_EX + user_inline_policy + Fore.RESET)
+            inline_policy_statement = inline_policy_document['PolicyDocument']['Statement']
+            if type(inline_policy_statement) == type(dict()):
+                for key,value in inline_policy_statement.items():   
+                    if key == 'Action':                   #Prints all actions in separate lines
+                        for j in inline_policy_statement['Action']:
+                            print("              ", key, ":", j)
+                    else:
+                        print("              ", key, ":", value)      #Print all elements within the statement dictionary
+            else:
+                for statement in inline_policy_statement:       
+                    for key,value in statement.items():      
+                        print("              ", key, ":", value)
+            print("\n", end="")
+            
+    user_managed_policies = user.get('AttachedManagedPolicies')
+    if len(user_managed_policies.get('PolicyNames')) == 0:
         print(" - No Managed Policies found for", Fore.BLUE + user['UserName'] + Fore.RESET)
     else:
-        print(" - User Managed Policies: ", user.get('AttachedManagedPolicies'))
+        print(" - User Managed Policies: ", user_managed_policies)
         # TODO - Parse User Managed Policies
 
     #Get user group membership
-    print(" - User Group Membership: ", user.get('GroupList'))
-    for group in user['GroupList']:
-        for groupname in groupList[0]['GroupDetailList']:
-            if groupname['GroupName'] == group:
-                print("     - Policies for Group:", Fore.RED + groupname['GroupName'] + Fore.RESET)
-                
-                # Inline Group Policies
-                if len(groupname['GroupPolicyList']) == 0:
-                    print(Fore.LIGHTCYAN_EX + "        - No Inline Policies found"+ Fore.RESET)
-                else:
-                    print(Fore.LIGHTCYAN_EX + "        - Inline policies: " + Fore.RESET)
-                    for inlinepolicy in groupname['GroupPolicyList']:
-                        inline_policy_name = inlinepolicy.get('PolicyName')
-                        inline_policy_statement = client.get_group_policy(GroupName=group, PolicyName=inline_policy_name)
-                        print("           +", Fore.LIGHTBLUE_EX + inline_policy_name + Fore.RESET)
-                        print("           + Policy Statement for Inline Policy:" , Fore.LIGHTBLUE_EX + inline_policy_name + Fore.RESET)
-                        # print("           + ", inline_policy_statement['PolicyDocument']['Statement'])
-                        for statement in inline_policy_statement['PolicyDocument']['Statement']:
+    if len(user['GroupList']) == 0:
+        print(" - No Group Membership found for", Fore.BLUE + user['UserName'] + Fore.RESET)
+    else:
+        print(" - User Group Membership: ", user.get('GroupList'))
+        for group in user['GroupList']:
+            for groupname in groupList[0]['GroupDetailList']:
+                if groupname['GroupName'] == group:
+                    print("     - Policies for Group:", Fore.RED + groupname['GroupName'] + Fore.RESET)
+                    
+                    # Inline Group Policies
+                    if len(groupname['GroupPolicyList']) == 0:
+                        print(Fore.LIGHTCYAN_EX + "        - No Inline Policies found"+ Fore.RESET)
+                    else:
+                        print(Fore.LIGHTCYAN_EX + "        - Inline policies: " + Fore.RESET)
+                        for inlinepolicy in groupname['GroupPolicyList']:
+                            inline_policy_name = inlinepolicy.get('PolicyName')
+                            inline_policy_statement = client.get_group_policy(GroupName=group, PolicyName=inline_policy_name)
+                            print("           +", Fore.LIGHTBLUE_EX + inline_policy_name + Fore.RESET)
+                            print("           + Policy Statement for Inline Policy:" , Fore.LIGHTBLUE_EX + inline_policy_name + Fore.RESET)
+                            # print("           + ", inline_policy_statement['PolicyDocument']['Statement'])
+                            for statement in inline_policy_statement['PolicyDocument']['Statement']:
 
-                            for k,v in statement.items():
-                                if k == 'Action':                   #Prints all actions in separate lines
-                                    for j in statement['Action']:
-                                        print("              ", k, ":", j)
-                                else:
-                                    print("              ", k, ":", v)      #Print all elements within the statement dictionary
-                            print("\n", end="")
-
-                
-                # Managed Group Policies
-                if len(groupname['AttachedManagedPolicies']) == 0:
-                    print(Fore.LIGHTCYAN_EX + "        - No Managed Policies found" + Fore.RESET)
-                else:
-                    print(Fore.LIGHTCYAN_EX + "        - Managed policies:" + Fore.RESET)
-                    for managedpolicy in groupname['AttachedManagedPolicies']:
-                        policy_name = managedpolicy.get('PolicyName')
-                        policy_arn = managedpolicy.get('PolicyArn')
-                        policy_detail = client.get_policy(PolicyArn=policy_arn)
-                        policy_a = policy_detail.get('Policy')
-                        policy_ver = policy_a['DefaultVersionId']
-                        policy_statement = client.get_policy_version(PolicyArn=policy_arn,VersionId=policy_ver)
-                        print("           +", Fore.LIGHTBLUE_EX + policy_name + Fore.RESET)
-                        if policy_name == 'ReadOnlyAccess':
-                            print("           - Policy Statement for Managed Policy \"ReadOnlyAccess\" being skipped (too verbose)\n")
-                        else:                       
-                            # Uncomment the following if you want to retrieve the managed policy statements. Will result in a lot of data
-                            # Start commenting from below here
-                            print("           - Policy Statement for Managed Policy:", Fore.LIGHTBLUE_EX + policy_name + Fore.RESET)
-                            for statement in policy_statement['PolicyVersion']['Document']['Statement']:
                                 for k,v in statement.items():
                                     if k == 'Action':                   #Prints all actions in separate lines
                                         for j in statement['Action']:
@@ -99,7 +89,37 @@ for user in userList[0]['UserDetailList']:
                                     else:
                                         print("              ", k, ":", v)      #Print all elements within the statement dictionary
                                 print("\n", end="")
-                            # Stop commenting
-            else:
-                pass
+
+                    
+                    # Managed Group Policies
+                    if len(groupname['AttachedManagedPolicies']) == 0:
+                        print(Fore.LIGHTCYAN_EX + "        - No Managed Policies found" + Fore.RESET)
+                    else:
+                        print(Fore.LIGHTCYAN_EX + "        - Managed policies:" + Fore.RESET)
+                        for managedpolicy in groupname['AttachedManagedPolicies']:
+                            policy_name = managedpolicy.get('PolicyName')
+                            policy_arn = managedpolicy.get('PolicyArn')
+                            policy_detail = client.get_policy(PolicyArn=policy_arn)
+                            policy_a = policy_detail.get('Policy')
+                            policy_ver = policy_a['DefaultVersionId']
+                            policy_statement = client.get_policy_version(PolicyArn=policy_arn,VersionId=policy_ver)
+                            print("           +", Fore.LIGHTBLUE_EX + policy_name + Fore.RESET)
+                            if policy_name == 'ReadOnlyAccess':
+                                print("           - Policy Statement for Managed Policy \"ReadOnlyAccess\" being skipped (too verbose)\n")
+                            else:   
+                                # pass                    
+                                #Uncomment the following and uncomment the above line if you want to retrieve the managed policy statements. Will result in a lot of data
+                                #Start commenting from below here
+                                print("           - Policy Statement for Managed Policy:", Fore.LIGHTBLUE_EX + policy_name + Fore.RESET)
+                                for statement in policy_statement['PolicyVersion']['Document']['Statement']:
+                                    for k,v in statement.items():
+                                        if k == 'Action':                   #Prints all actions in separate lines
+                                            for j in statement['Action']:
+                                                print("              ", k, ":", j)
+                                        else:
+                                            print("              ", k, ":", v)      #Print all elements within the statement dictionary
+                                    print("\n", end="")
+                                #Stop commenting
+                else:
+                    pass
 
