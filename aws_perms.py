@@ -105,7 +105,7 @@ for user in userList[0]['UserDetailList']:
                                         print("              ", k, ":", v)      #Print all elements within the statement dictionary
                                 print("\n", end="")
 
-                    
+                    # Parsing White Space
                     # Managed Group Policies
                     if len(groupname['AttachedManagedPolicies']) == 0:
                         print(Fore.LIGHTCYAN_EX + "        - No Managed Policies found" + Fore.RESET)
