@@ -27,12 +27,12 @@ if groupList[0]['IsTruncated'] == True:
 for user in userList[0]['UserDetailList']:
     user_inline_policies = client.list_user_policies(UserName=user['UserName'])
     if user_inline_policies['IsTruncated'] == True:
-        print(Fore.RED + "Truncated Inline Policies" + Fore.RESET)
+        print(Fore.RED + "Truncated Inline Policies" + Fore.RESET)      # Prints whether or not results are truncated.
     
-    #Get user inline and managed policies
+    #Get user inline policies
     print(Fore.BLUE + "User Name: ", user['UserName'] + Fore.RESET)     # Prints Username
     if len(user_inline_policies['PolicyNames']) == 0:
-        print(" - No Inline Policies found for", Fore.BLUE + user['UserName'] + Fore.RESET)
+        print(Fore.LIGHTGREEN_EX +" - No Inline Policies found for", user['UserName'] + Fore.RESET)
     else:
         print(" - User Inline Policies: ", user_inline_policies['PolicyNames'])
         for user_inline_policy in user_inline_policies['PolicyNames']:
@@ -51,17 +51,33 @@ for user in userList[0]['UserDetailList']:
                     for key,value in statement.items():      
                         print("              ", key, ":", value)
             print("\n", end="")
-            
+
+    #Get user managed policies        
     user_managed_policies = user.get('AttachedManagedPolicies')
-    if len(user_managed_policies.get('PolicyNames')) == 0:
-        print(" - No Managed Policies found for", Fore.BLUE + user['UserName'] + Fore.RESET)
+    if len(user_managed_policies) == 0:
+        print(Fore.LIGHTGREEN_EX +" - No Managed Policies found for", user['UserName'] + Fore.RESET)
     else:
-        print(" - User Managed Policies: ", user_managed_policies)
-        # TODO - Parse User Managed Policies
+        print(" - User Managed Policies:")
+        for policy in user_managed_policies:
+            user_managed_policy_arn = policy['PolicyArn']
+            user_managed_policy_name = policy['PolicyName']
+            user_managed_policy_details = client.get_policy(PolicyArn=user_managed_policy_arn)
+            user_managed_policy_version = user_managed_policy_details['Policy']['DefaultVersionId']
+            print(Fore.LIGHTBLUE_EX + "    +", user_managed_policy_name + Fore.RESET)
+            print("    + Policy Statement for Managed User Policy:", Fore.LIGHTBLUE_EX + user_managed_policy_name + Fore.RESET)
+            user_managed_policy_doc = client.get_policy_version(PolicyArn=user_managed_policy_arn, VersionId=user_managed_policy_version)
+            for statement in user_managed_policy_doc['PolicyVersion']['Document']['Statement']:
+                for k,v in statement.items():
+                    if k == 'Action':
+                        for action in statement['Action']:
+                            print("              ", k, ":", action)
+                    else:
+                        print("              ", k, ":", v)
+                print("\n", end="")
 
     #Get user group membership
     if len(user['GroupList']) == 0:
-        print(" - No Group Membership found for", Fore.BLUE + user['UserName'] + Fore.RESET)
+        print(Fore.LIGHTGREEN_EX + " - No Group Membership found for", user['UserName'], "\n" + Fore.RESET)
     else:
         print(" - User Group Membership: ", user.get('GroupList'))
         for group in user['GroupList']:
@@ -77,15 +93,14 @@ for user in userList[0]['UserDetailList']:
                         for inlinepolicy in groupname['GroupPolicyList']:
                             inline_policy_name = inlinepolicy.get('PolicyName')
                             inline_policy_statement = client.get_group_policy(GroupName=group, PolicyName=inline_policy_name)
-                            print("           +", Fore.LIGHTBLUE_EX + inline_policy_name + Fore.RESET)
+                            print(Fore.LIGHTBLUE_EX + "           +", inline_policy_name + Fore.RESET)
                             print("           + Policy Statement for Inline Policy:" , Fore.LIGHTBLUE_EX + inline_policy_name + Fore.RESET)
                             # print("           + ", inline_policy_statement['PolicyDocument']['Statement'])
                             for statement in inline_policy_statement['PolicyDocument']['Statement']:
-
                                 for k,v in statement.items():
                                     if k == 'Action':                   #Prints all actions in separate lines
-                                        for j in statement['Action']:
-                                            print("              ", k, ":", j)
+                                        for action in statement['Action']:
+                                            print("              ", k, ":", action)
                                     else:
                                         print("              ", k, ":", v)      #Print all elements within the statement dictionary
                                 print("\n", end="")
@@ -105,21 +120,21 @@ for user in userList[0]['UserDetailList']:
                             policy_statement = client.get_policy_version(PolicyArn=policy_arn,VersionId=policy_ver)
                             print("           +", Fore.LIGHTBLUE_EX + policy_name + Fore.RESET)
                             if policy_name == 'ReadOnlyAccess':
-                                print("           - Policy Statement for Managed Policy \"ReadOnlyAccess\" being skipped (too verbose)\n")
+                                print("           + Policy Statement for Managed Policy \"ReadOnlyAccess\" being skipped (too verbose)\n")
                             else:   
-                                # pass                    
-                                #Uncomment the following and uncomment the above line if you want to retrieve the managed policy statements. Will result in a lot of data
-                                #Start commenting from below here
-                                print("           - Policy Statement for Managed Policy:", Fore.LIGHTBLUE_EX + policy_name + Fore.RESET)
-                                for statement in policy_statement['PolicyVersion']['Document']['Statement']:
-                                    for k,v in statement.items():
-                                        if k == 'Action':                   #Prints all actions in separate lines
-                                            for j in statement['Action']:
-                                                print("              ", k, ":", j)
-                                        else:
-                                            print("              ", k, ":", v)      #Print all elements within the statement dictionary
-                                    print("\n", end="")
-                                #Stop commenting
+                                pass                    
+                                #Uncomment the following and comment the above line if you want to retrieve the managed policy statements. Will result in a lot of data
+                                #### Start commenting from below here
+                                # print("           + Policy Statement for Managed Policy:", Fore.LIGHTBLUE_EX + policy_name + Fore.RESET)
+                                # for statement in policy_statement['PolicyVersion']['Document']['Statement']:
+                                #     for k,v in statement.items():
+                                #         if k == 'Action':                   #Prints all actions in separate lines
+                                #             for action in statement['Action']:
+                                #                 print("              ", k, ":", action)
+                                #         else:
+                                #             print("              ", k, ":", v)      #Print all elements within the statement dictionary
+                                #     print("\n", end="")
+                                ##### Stop commenting
                 else:
                     pass
 
