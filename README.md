@@ -11,9 +11,12 @@ There are existing tools that go through potential privilege escalation avenues 
 This script requires Python 3
 
 Install the AWS Python SDK and Dependencies. [Details](https://github.com/boto/boto3)
+Install [Colorama](https://pypi.org/project/colorama/)
+
+The requirements.txt file can be used to install the dependencies using pip3
 
  ```
- pip install boto3
+ pip3 install -r requirements.txt
  ```
 
 Further details can be found [here](https://aws.amazon.com/developers/getting-started/python/)
@@ -28,11 +31,6 @@ aws_secret_access_key = AWS_SECRET
 
 If you need to assume an IAM role and then scan for assigned permissions, remind101's assume-role tool is very helpful, especially is you are required to provide MFA. [Link](https://github.com/remind101/assume-role)
 
-Install [Colorama](https://pypi.org/project/colorama/)
-
-```
-pip install colorama
-```
 
 ### Running
 
