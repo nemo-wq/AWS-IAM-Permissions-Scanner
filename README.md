@@ -11,6 +11,7 @@ There are existing tools that go through potential privilege escalation avenues 
 This script requires Python 3
 
 Install the AWS Python SDK and Dependencies. [Details](https://github.com/boto/boto3)
+
 Install [Colorama](https://pypi.org/project/colorama/)
 
 The requirements.txt file can be used to install the dependencies using pip3
