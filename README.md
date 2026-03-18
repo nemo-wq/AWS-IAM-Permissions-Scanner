@@ -1,40 +1,62 @@
 # AWS IAM Permissions Scan
 
-This tool lists all policies assigned to all IAM users in your AWS account. Policies can be assigned to users via user policies or inherited by group memberships. 
+This project scans AWS IAM permissions assigned to users directly and through group membership.
 
-Read only permissions to IAM in the AWS account being scanned are required. This can be achieved by assigning the SecurityAudit AWS Managed policy to the IAM user or role being used to run this scan. 
+## What's improved
 
-There are existing tools that go through potential privilege escalation avenues due to excessive AWS permissions. This script therefore complements rather than replaces some of these tools, such as Rhino Security's [AWS Escalate](https://github.com/RhinoSecurityLabs/Security-Research/blob/master/tools/aws-pentest-tools/aws_escalate.py), NCC Group's [Scout2](https://github.com/nccgroup/Scout2), or [CloudSploit](https://github.com/cloudsploit).
+- **Reliable pagination support** for IAM list APIs, including:
+  - `get_account_authorization_details` for full user/group collection
+  - `list_user_policies` for full inline policy name collection
+- **Refactored scanner engine** (`scanner.py`) reusable from both CLI and web app.
+- **Web GUI** using Flask for running scans from a browser.
 
-## Getting Started
+## Requirements
 
-This script requires Python 3
+- Python 3.10+
+- AWS credentials configured locally (for example via `aws configure`)
+- IAM read permissions (for example, AWS managed policy `SecurityAudit`)
 
-Install the AWS Python SDK and Dependencies. [Details](https://github.com/boto/boto3)
+Install dependencies:
 
-Install [Colorama](https://pypi.org/project/colorama/)
-
-The requirements.txt file can be used to install the dependencies using pip3
-
- ```
- pip3 install -r requirements.txt
- ```
-
-Further details can be found [here](https://aws.amazon.com/developers/getting-started/python/)
-
-Setup your AWS credentials. If you have awscli installed, running `aws configure` will prompt you for your AWS Access Key ID and your Secret Key, and create the `~/.aws/credentials` file. Alternatively, the `~/.aws/credentials` file can be configured as shown in the below example:
-
-```
-[default]
-aws_access_key_id = AWS_KEY
-aws_secret_access_key = AWS_SECRET
+```bash
+pip3 install -r requirements.txt
 ```
 
-If you need to assume an IAM role and then scan for assigned permissions, remind101's assume-role tool is very helpful, especially is you are required to provide MFA. [Link](https://github.com/remind101/assume-role)
+## CLI Usage
 
+Run pretty text output:
 
-### Running
-
+```bash
+python aws_perms.py
 ```
-python ./aws_perms.py
+
+Run JSON output:
+
+```bash
+python aws_perms.py --json
 ```
+
+Use a specific AWS profile:
+
+```bash
+python aws_perms.py --profile my-profile
+```
+
+## Web App Usage
+
+Start the web app:
+
+```bash
+python app.py
+```
+
+Then open:
+
+- `http://127.0.0.1:5000`
+
+Enter an optional AWS profile and click **Run Scan**.
+
+## Notes
+
+- IAM is a global service; region is optional and mainly present for session compatibility.
+- Managed policy statements can be large depending on your account's policy set.
