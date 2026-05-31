@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AWS IAM Exposure Review</title>
+  <style>
+:root {
+  color-scheme: light;
+  --ink: #182026;
+  --muted: #52616b;
+  --line: #d9e1e7;
+  --bg: #f7f9fb;
+  --panel: #ffffff;
+  --red: #b42318;
+  --amber: #b54708;
+  --green: #067647;
+  --blue: #175cd3;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Aptos, "Avenir Next", "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
+main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 56px; }
+.hero { border-bottom: 1px solid var(--line); padding: 28px 0 24px; }
+.eyebrow { color: var(--blue); font-weight: 700; letter-spacing: 0; text-transform: uppercase; font-size: 13px; margin: 0 0 8px; }
+h1 { font-size: 42px; line-height: 1.08; margin: 0; }
+h2 { font-size: 20px; margin: 0 0 14px; }
+.lede { max-width: 760px; color: var(--muted); font-size: 18px; line-height: 1.5; }
+.meta { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 13px; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: normal; word-break: break-word; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 22px 0; }
+.metrics div, section.grid > div, section:not(.hero):not(.metrics):not(.grid) { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+.metrics strong { display: block; font-size: 32px; line-height: 1; }
+.metrics span, small, .split-list span { color: var(--muted); }
+.brief-grid { display:grid; grid-template-columns: 1.1fr 1.4fr 1.2fr .8fr; gap: 14px; }
+.brief-grid div { border-left: 4px solid var(--blue); padding-left: 12px; min-width: 0; }
+.brief-grid strong { display:block; font-size: 18px; line-height: 1.25; margin: 4px 0 8px; }
+.brief-grid p { margin: 4px 0 0; line-height: 1.45; }
+.brief-label { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0; }
+section { margin: 18px 0; }
+.fixes { padding-left: 22px; line-height: 1.65; }
+.split-list { list-style: none; padding: 0; margin: 0; }
+.split-list li { display: flex; justify-content: space-between; gap: 18px; border-top: 1px solid var(--line); padding: 10px 0; }
+.split-list li:first-child { border-top: 0; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; vertical-align: top; border-top: 1px solid var(--line); padding: 12px; }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0; }
+.badge { color: white; border-radius: 6px; padding: 4px 7px; font-size: 11px; font-weight: 700; }
+.sev-critical .badge { background: var(--red); }
+.sev-high .badge { background: var(--amber); }
+.sev-medium .badge { background: var(--blue); }
+.sev-low .badge, .sev-info .badge { background: var(--green); }
+.charts > div { min-height: 320px; }
+.graph-metrics { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.graph-metrics div { background: var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px; }
+.graph-metrics strong { display:block; font-size: 28px; }
+.comparison-grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.comparison-grid .split-list { min-height: 100%; }
+.stacked-bar { display: flex; height: 18px; overflow: hidden; border-radius: 8px; border: 1px solid var(--line); background: #eef2f6; }
+.stacked-bar span { display: block; height: 100%; }
+.legend { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.legend li { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.legend strong { color: var(--ink); margin-left: auto; }
+.legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.chart-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.chart-list li { display: grid; gap: 6px; }
+.chart-list span { color: var(--ink); font-weight: 600; }
+.bar-wrap { position: relative; height: 18px; background: #eef2f6; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.bar-wrap i { display: block; height: 100%; border-radius: 8px; }
+.bar-wrap em { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 12px; color: var(--ink); }
+.pie-chart { width: 190px; aspect-ratio: 1; border-radius: 50%; margin: 6px auto 12px; position: relative; border: 1px solid var(--line); }
+.pie-chart::after { content: ""; position: absolute; inset: 24%; background: var(--panel); border-radius: 50%; border: 1px solid var(--line); }
+.trend-svg { width: 100%; height: auto; display: block; }
+.empty-chart { color: var(--muted); }
+@media (max-width: 800px) {
+  h1 { font-size: 30px; }
+  .metrics, .grid, .brief-grid { grid-template-columns: 1fr; }
+  .comparison-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">AWS IAM Exposure Review</p>
+      <h1>example-aws-account</h1>
+      <p class="lede">Privilege escalation, credential exposure, and trust-path assurance for red-team-grade AWS assessments.</p>
+      <div class="meta">
+        <span>Account <code>123456789012</code></span>
+        <span>Generated 2026-05-31T00:00:00+00:00</span>
+        <span>Caller <code>arn:aws:sts::123456789012:assumed-role/SecurityAudit/example-session</code></span>
+      </div>
+    </section>
+
+    <section class="metrics">
+      <div><strong>4</strong><span>Total findings</span></div>
+      <div><strong>4</strong><span>Critical/high</span></div>
+      <div><strong>44</strong><span>Assurance score</span></div>
+      <div><strong>3</strong><span>Enabled rules</span></div>
+    </section>
+
+    <section>
+      <h2>Assessment Brief</h2>
+      
+<div class="brief-grid">
+  <div>
+    <span class="brief-label">Fix first</span>
+    <strong>Direct administrator-equivalent permissions</strong>
+    <small>Principal: <code>alice.admin</code></small>
+  </div>
+  <div>
+    <span class="brief-label">Proof</span>
+    <code>user:alice.admin -&gt; group:CloudAdmins -&gt; managed:AdministratorAccess -&gt; *</code>
+  </div>
+  <div>
+    <span class="brief-label">Action</span>
+    <p>Remove direct administrator access and replace it with a scoped break-glass role.</p>
+  </div>
+  <div>
+    <span class="brief-label">Assurance</span>
+    <strong>44/100</strong>
+    <small>4 critical/high findings · 1 collection warnings</small>
+  </div>
+</div>
+
+    </section>
+
+    <section class="grid">
+      <div>
+        <h2>Risk Reduction Priorities</h2>
+        <ol class="fixes"><li><strong>CRITICAL</strong> Direct administrator-equivalent permissions on <code>alice.admin</code></li>
+<li><strong>CRITICAL</strong> Can pass roles to CodeBuild on <code>build.operator</code></li>
+<li><strong>HIGH</strong> External or broad role trust without ExternalId on <code>VendorAuditRole</code></li>
+<li><strong>HIGH</strong> IAM console user without MFA on <code>alice.admin</code></li></ol>
+      </div>
+      <div>
+        <h2>Top Risky Principals</h2>
+        <ul class="split-list"><li><code>alice.admin</code><span>2 findings</span></li>
+<li><code>build.operator</code><span>1 findings</span></li>
+<li><code>VendorAuditRole</code><span>1 findings</span></li></ul>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div>
+        <h2>Finding Categories</h2>
+        <ul class="split-list"><li><span>Self Escalation</span><strong>1</strong></li>
+<li><span>Iam Passrole Path</span><strong>1</strong></li>
+<li><span>Cross Account And Third Party Trust</span><strong>1</strong></li>
+<li><span>Credential And Legacy Iam Risk</span><strong>1</strong></li></ul>
+      </div>
+      <div>
+        <h2>Rules Coverage</h2>
+        <p>Synthetic bundled-rule snapshot for the example report.</p>
+        <p><strong>Sources:</strong> AWS IAM, AWS IAM confused deputy guidance, Bishop Fox, Cloudsplaining, HackTricks, Rhino Security Labs, WithSecure IAMGraph research, pathfinding.cloud</p>
+      </div>
+    </section>
+
+    <section class="grid charts">
+      <div>
+        <h2>Severity Breakdown</h2>
+        <div class='stacked-bar'><span style='width:50.00%;background:#b42318' title='critical: 2'></span><span style='width:50.00%;background:#b54708' title='high: 2'></span></div><ul class='legend'><li><span class='legend-swatch' style='background:#b42318'></span>Critical <strong>2</strong></li><li><span class='legend-swatch' style='background:#b54708'></span>High <strong>2</strong></li></ul>
+      </div>
+      <div>
+        <h2>Top Risky Principals</h2>
+        <ul class='chart-list'><li><span>alice.admin</span><div class='bar-wrap'><i style='width:100.00%;background:#175cd3'></i><em>2 findings</em></div></li><li><span>build.operator</span><div class='bar-wrap'><i style='width:50.00%;background:#175cd3'></i><em>1 findings</em></div></li><li><span>VendorAuditRole</span><div class='bar-wrap'><i style='width:50.00%;background:#175cd3'></i><em>1 findings</em></div></li></ul>
+      </div>
+    </section>
+
+    <section class="grid charts">
+      <div>
+        <h2>Finding Categories</h2>
+        <div class='pie-chart' style='background: conic-gradient(#175cd3 0.00deg 90.00deg, #067647 90.00deg 180.00deg, #b54708 180.00deg 270.00deg, #b42318 270.00deg 360.00deg)'></div><ul class='legend'><li><span class='legend-swatch' style='background:#175cd3'></span>Self Escalation <strong>1</strong></li><li><span class='legend-swatch' style='background:#067647'></span>Iam Passrole Path <strong>1</strong></li><li><span class='legend-swatch' style='background:#b54708'></span>Cross Account And Third Party Trust <strong>1</strong></li><li><span class='legend-swatch' style='background:#b42318'></span>Credential And Legacy Iam Risk <strong>1</strong></li></ul>
+      </div>
+      <div>
+        <h2>Risk Trend</h2>
+        
+<svg viewBox="0 0 620 220" class="trend-svg" role="img" aria-label="Risk trend line">
+  <line x1='30' y1='25' x2='590' y2='25' stroke='#e4e7ec' /><line x1='30' y1='75' x2='590' y2='75' stroke='#e4e7ec' /><line x1='30' y1='125' x2='590' y2='125' stroke='#e4e7ec' /><line x1='30' y1='175' x2='590' y2='175' stroke='#e4e7ec' />
+  <polyline points="30.0,195.0" fill="none" stroke="#175cd3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+  <circle cx='30.0' cy='195.0' r='4' fill='#175cd3'><title>2026-05-31T00:00:00+00:00: score 44</title></circle>
+</svg>
+
+      </div>
+    </section>
+
+    <section class="grid charts">
+      <div>
+        <h2>Attack Path Distribution</h2>
+        <div class='pie-chart' style='background: conic-gradient(#175cd3 0.00deg 90.00deg, #067647 90.00deg 180.00deg, #b54708 180.00deg 270.00deg, #b42318 270.00deg 360.00deg)'></div><ul class='legend'><li><span class='legend-swatch' style='background:#175cd3'></span>Self Escalation <strong>1</strong></li><li><span class='legend-swatch' style='background:#067647'></span>Iam Passrole Path <strong>1</strong></li><li><span class='legend-swatch' style='background:#b54708'></span>Cross Account And Third Party Trust <strong>1</strong></li><li><span class='legend-swatch' style='background:#b42318'></span>Credential And Legacy Iam Risk <strong>1</strong></li></ul>
+      </div>
+      <div>
+        <h2>Collection Coverage</h2>
+        <ul class='chart-list'><li><span>Users</span><div class='bar-wrap'><i style='width:100.00%;background:#175cd3'></i><em>2</em></div></li><li><span>Roles</span><div class='bar-wrap'><i style='width:50.00%;background:#067647'></i><em>1</em></div></li><li><span>Groups</span><div class='bar-wrap'><i style='width:100.00%;background:#b54708'></i><em>2</em></div></li><li><span>Warnings</span><div class='bar-wrap'><i style='width:50.00%;background:#b42318'></i><em>1</em></div></li></ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>Attack Graph</h2>
+      <div class="graph-metrics">
+        <div><strong>29</strong><span>Nodes</span></div>
+        <div><strong>42</strong><span>Edges</span></div>
+        <div><strong>3</strong><span>Principals</span></div>
+        <div><strong>5</strong><span>Policies</span></div>
+        <div><strong>7</strong><span>Grants</span></div>
+        <div><strong>9</strong><span>Actions</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>What Changed</h2>
+      <p class='empty-chart'>This is the first scan in this output folder. Run another scan here to compare results and show risk reduction over time.</p>
+    </section>
+
+    <section>
+      <h2>Attack Path Findings</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Severity</th><th>Status</th><th>Principal</th><th>Finding</th><th>Attack path</th><th>Recommendation</th></tr>
+          </thead>
+          <tbody><tr class='sev-critical'><td><span class='badge'>CRITICAL</span></td><td>confirmed</td><td><code>alice.admin</code><br><small>user</small></td><td><strong>Direct administrator-equivalent permissions</strong><br><small>The principal can perform administrator-level actions across the account.</small></td><td><code>user:alice.admin -&gt; group:CloudAdmins -&gt; managed:AdministratorAccess -&gt; *</code></td><td>Remove direct administrator access and replace it with a scoped break-glass role.</td></tr>
+<tr class='sev-critical'><td><span class='badge'>CRITICAL</span></td><td>likely</td><td><code>build.operator</code><br><small>user</small></td><td><strong>Can pass roles to CodeBuild</strong><br><small>The principal may be able to run build jobs under a privileged service role.</small></td><td><code>user:build.operator -&gt; managed:DeveloperBuildAccess -&gt; iam:PassRole -&gt; codebuild:CreateProject</code></td><td>Restrict CodeBuild project creation and scope iam:PassRole to approved CI roles.</td></tr>
+<tr class='sev-high'><td><span class='badge'>HIGH</span></td><td>likely</td><td><code>VendorAuditRole</code><br><small>role</small></td><td><strong>External or broad role trust without ExternalId</strong><br><small>A third-party or broad trust relationship can become a lateral movement or supply-chain entry point if not tightly scoped.</small></td><td><code>external principal -&gt; sts:AssumeRole -&gt; role:VendorAuditRole</code></td><td>Scope trusted principals tightly and require sts:ExternalId for third-party access.</td></tr>
+<tr class='sev-high'><td><span class='badge'>HIGH</span></td><td>confirmed</td><td><code>alice.admin</code><br><small>user</small></td><td><strong>IAM console user without MFA</strong><br><small>A phished or reused password can provide direct console access without a second factor.</small></td><td><code>user:alice.admin -&gt; console password -&gt; no MFA</code></td><td>Require MFA immediately and migrate human access to federated SSO where practical.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Collection Limitations</h2>
+      <ul><li>Access Analyzer enrichment unavailable in this synthetic example.</li></ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,40 +1,89 @@
-# AWS IAM Permissions Scan
+# AWS IAM Exposure Review
 
-This tool lists all policies assigned to all IAM users in your AWS account. Policies can be assigned to users via user policies or inherited by group memberships. 
+AWS IAM Exposure Review is a local-first AWS IAM security assessment tool for penetration testers, red teamers, and small cyber teams. It collects read-only IAM authorization data, detects high-risk IAM permissions and privilege escalation paths, and writes a static HTML dashboard/report with practitioner evidence and leadership-friendly risk reduction context.
 
-Read only permissions to IAM in the AWS account being scanned are required. This can be achieved by assigning the SecurityAudit AWS Managed policy to the IAM user or role being used to run this scan. 
+The v1 focus is not generic CSPM. It is research-backed IAM attack-path review inspired by Rhino Security Labs, NCC Group/PMapper, Bishop Fox, Cloudsplaining, HackTricks, pathfinding.cloud, WithSecure IAMGraph research, Datadog cloud security research, and AWS IAM guidance.
 
-There are existing tools that go through potential privilege escalation avenues due to excessive AWS permissions. This script therefore complements rather than replaces some of these tools, such as Rhino Security's [AWS Escalate](https://github.com/RhinoSecurityLabs/Security-Research/blob/master/tools/aws-pentest-tools/aws_escalate.py), NCC Group's [Scout2](https://github.com/nccgroup/Scout2), or [CloudSploit](https://github.com/cloudsploit).
+## What It Produces
 
-## Getting Started
+- `report.html`: static dashboard/report for sharing with clients or leadership.
+- `findings.json`: structured machine-readable findings.
+- `findings.csv`: triage-friendly export for spreadsheets and consultants.
+- `findings.sarif`: SARIF export for tooling and workflow integrations.
+- `inventory.json`: normalized IAM inventory.
+- `ruleset.json`: bundled rule metadata used for the scan.
+- `graph.json`: attack graph for downstream visualization or analysis.
+- `summary.json`: scan summary and risk breakdown.
+- `history.json`: scan trend history for repeated runs in the same folder.
+- `evidence/collection-warnings.json`: collection limitations and optional permission failures.
 
-This script requires Python 3
+## Example Report
 
-Install the AWS Python SDK and Dependencies. [Details](https://github.com/boto/boto3)
+View the synthetic [example report](docs/example-report.html) to see the dashboard, charts, attack-path evidence, and remediation layout.
 
-Install [Colorama](https://pypi.org/project/colorama/)
+## Install
 
-The requirements.txt file can be used to install the dependencies using pip3
-
- ```
- pip3 install -r requirements.txt
- ```
-
-Further details can be found [here](https://aws.amazon.com/developers/getting-started/python/)
-
-Setup your AWS credentials. If you have awscli installed, running `aws configure` will prompt you for your AWS Access Key ID and your Secret Key, and create the `~/.aws/credentials` file. Alternatively, the `~/.aws/credentials` file can be configured as shown in the below example:
-
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -e .
 ```
-[default]
-aws_access_key_id = AWS_KEY
-aws_secret_access_key = AWS_SECRET
+
+## Run
+
+Use an existing AWS profile, SSO session, or assumed role with read-only IAM permissions.
+
+```bash
+iam-exposure scan --profile default --output ./reports/demo --format html,json,csv,sarif
 ```
 
-If you need to assume an IAM role and then scan for assigned permissions, remind101's assume-role tool is very helpful, especially is you are required to provide MFA. [Link](https://github.com/remind101/assume-role)
+The legacy entrypoint still works:
 
-
-### Running
-
+```bash
+python aws_perms.py scan --profile default --output ./reports/demo
 ```
-python ./aws_perms.py
+
+Useful options:
+
+```bash
+iam-exposure scan \
+  --profile assessment \
+  --role-arn arn:aws:iam::123456789012:role/SecurityAudit \
+  --region ap-southeast-2 \
+  --output ./reports/client-a \
+  --format html,json \
+  --severity-threshold low \
+  --account-alias client-a \
+  --ruleset bundled \
+  --include-aws-managed-policies
+```
+
+## Rule Coverage
+
+The bundled offline ruleset covers:
+
+- Direct administrator-equivalent access.
+- IAM self-escalation actions such as policy version changes, inline policy writes, policy attachment, group membership changes, and trust-policy mutation.
+- Principal access paths such as access-key and console-login profile creation.
+- `iam:PassRole` paths through EC2, Lambda, ECS, CloudFormation, CodeBuild, Glue, SageMaker, and App Runner.
+- Existing-resource pivots through Lambda, CodeBuild, and SSM.
+- Cross-account and third-party trust risks, including broad external trust without `sts:ExternalId`.
+- Credential and legacy IAM risk such as long-lived active access keys and console users without MFA.
+
+Rules include source attribution so findings explain whether they map to public research, AWS guidance, or project logic. The tool ships a bundled snapshot for deterministic offline scans; online rule updates are intentionally out of scope for v1.
+
+## Safety Model
+
+- Local-only execution.
+- No telemetry.
+- No hosted backend.
+- No AWS resource mutation.
+- No exploit commands in reports.
+- Optional AWS API failures degrade into collection warnings.
+
+## Tests
+
+```bash
+python -m unittest discover -s tests
 ```

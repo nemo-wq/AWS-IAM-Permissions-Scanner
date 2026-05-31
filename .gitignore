@@ -1,0 +1,64 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Python bytecode and tooling caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments and local installs
+.venv/
+venv/
+env/
+ENV/
+.python-version
+*.egg-info/
+build/
+dist/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.aws/
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+*.jks
+*.kdb
+*.tfvars
+*.tfstate
+*.tfstate.*
+
+# Generated IAM Exposure Review outputs.
+# These can contain account IDs, ARNs, principal names, findings, and graph data.
+reports/
+report-output/
+iam-exposure-output/
+iam-exposure-reports/
+/report.html
+/findings.json
+/findings.csv
+/findings.sarif
+/inventory.json
+/ruleset.json
+/summary.json
+/history.json
+/graph.json
+/evidence/collection-warnings.json
+!docs/example-report.html
+
+# Local editor metadata
+.idea/
+.vscode/
+*.swp
+*.swo
