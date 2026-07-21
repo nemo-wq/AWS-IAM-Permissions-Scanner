@@ -1,0 +1,27 @@
+{
+  "name": "Group inherited policy attachment",
+  "inventory": {
+    "schema_version": "2.0",
+    "account": {"account_id": "111111111111", "alias": "benchmark-group"},
+    "users": [{"name": "alice", "groups": ["Operators"], "access_keys": [], "password_enabled": false, "mfa_enabled": true}],
+    "groups": [{"name": "Operators"}],
+    "roles": [],
+    "principals": [{"type": "user", "name": "alice"}],
+    "grants": [{
+      "principal_type": "user",
+      "principal_name": "alice",
+      "source": "group-inline:Operators/Escalate",
+      "inherited_via": "group:Operators",
+      "policy_scope": "identity",
+      "effect": "allow",
+      "statement_index": 0,
+      "actions": ["iam:AttachUserPolicy"],
+      "not_actions": [],
+      "resources": ["*"],
+      "not_resources": [],
+      "conditions": {}
+    }]
+  },
+  "expected_present": ["iam.attach-user-policy"],
+  "expected_absent": []
+}

@@ -4,17 +4,63 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "iam-exposure-review"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first AWS IAM exposure and privilege escalation review tool."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{name = "AWS IAM Exposure Review contributors"}]
+keywords = ["aws", "iam", "security", "privilege-escalation", "attack-path"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Information Technology",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+]
 dependencies = [
   "boto3>=1.34.0",
   "botocore>=1.34.0"
 ]
 
+[project.optional-dependencies]
+dev = [
+  "bandit>=1.7.9",
+  "build>=1.2.2",
+  "mypy>=1.11.0",
+  "pip-audit>=2.7.3",
+  "ruff>=0.6.0",
+  "twine>=5.1.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/nemo-wq/AWS-IAM-Permissions-Scanner"
+Documentation = "https://github.com/nemo-wq/AWS-IAM-Permissions-Scanner#readme"
+Issues = "https://github.com/nemo-wq/AWS-IAM-Permissions-Scanner/issues"
+
 [project.scripts]
 iam-exposure = "iam_exposure.cli:main"
 
 [tool.setuptools.package-data]
-iam_exposure = ["data/*.json"]
+iam_exposure = ["data/*.json", "py.typed"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"iam_exposure/report.py" = ["E501"] # Self-contained report templates keep CSS and HTML readable as source.
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true
+no_implicit_optional = true

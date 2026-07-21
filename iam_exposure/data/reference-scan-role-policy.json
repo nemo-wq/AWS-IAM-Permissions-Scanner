@@ -1,0 +1,47 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "IdentityAndCredentialMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GenerateCredentialReport",
+        "iam:GetAccountAuthorizationDetails",
+        "iam:GetAccessKeyLastUsed",
+        "iam:GetCredentialReport",
+        "iam:GetLoginProfile",
+        "iam:ListAccessKeys",
+        "iam:ListAccountAliases",
+        "iam:ListInstanceProfiles",
+        "iam:ListMFADevices"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CallerIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "NativeAnalyzerEnrichment",
+      "Effect": "Allow",
+      "Action": [
+        "access-analyzer:ListAnalyzers",
+        "access-analyzer:ListFindings"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "OrganizationConstraintEnrichment",
+      "Effect": "Allow",
+      "Action": [
+        "organizations:DescribeOrganization",
+        "organizations:DescribePolicy",
+        "organizations:ListParents",
+        "organizations:ListPoliciesForTarget"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

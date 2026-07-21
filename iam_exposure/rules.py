@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any
 
-from .policy import grant_allows, principal_from_trust_statement, resource_is_broad, statements
+from .lifecycle import add_fingerprints
+from .policy import effective_grant_for_action, principal_from_trust_statement, resource_is_broad, statements
+from .updates import load_and_verify_rule_bundle
 
 SEVERITY_ORDER = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
@@ -17,23 +20,23 @@ class Rule:
     category: str
     severity: str
     confidence: str
-    required_permissions: List[str]
-    optional_permissions: List[str]
-    prerequisites: List[str]
-    source: List[str]
+    required_permissions: list[str]
+    optional_permissions: list[str]
+    prerequisites: list[str]
+    source: list[str]
     business_impact: str
     recommendation: str
 
 
-def load_ruleset(name: str = "bundled") -> Dict[str, Any]:
-    if name not in {"bundled", "pathfinding-snapshot"}:
-        raise ValueError("ruleset must be 'bundled' or 'pathfinding-snapshot'")
-    path = Path(__file__).with_name("data") / "ruleset.json"
-    with path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+def load_ruleset(name: str = "bundled") -> dict[str, Any]:
+    if name in {"bundled", "pathfinding-snapshot"}:
+        path = Path(__file__).with_name("data") / "ruleset.json"
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    return load_and_verify_rule_bundle(Path(name).expanduser())
 
 
-def rules_from_ruleset(ruleset: Dict[str, Any]) -> List[Rule]:
+def rules_from_ruleset(ruleset: dict[str, Any]) -> list[Rule]:
     return [
         Rule(
             id=rule["id"],
@@ -53,20 +56,22 @@ def rules_from_ruleset(ruleset: Dict[str, Any]) -> List[Rule]:
 
 
 def evaluate_inventory(
-    inventory: Dict[str, Any],
-    ruleset: Dict[str, Any],
+    inventory: dict[str, Any],
+    ruleset: dict[str, Any],
     severity_threshold: str = "low",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     threshold = SEVERITY_ORDER[severity_threshold]
     rules = rules_from_ruleset(ruleset)
     grants = inventory.get("grants", [])
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
 
     for principal in inventory.get("principals", []):
         principal_grants = [
-            grant for grant in grants if grant.get("principal_name") == principal["name"]
-            and grant.get("principal_type") == principal["type"]
+            grant
+            for grant in grants
+            if grant.get("principal_name") == principal["name"] and grant.get("principal_type") == principal["type"]
         ]
+        principal_grants.extend(grant for grant in grants if grant.get("principal_type") == "global" and grant.get("principal_name") == "*")
         for rule in rules:
             if SEVERITY_ORDER[rule.severity] < threshold:
                 continue
@@ -85,28 +90,37 @@ def evaluate_inventory(
             finding["id"],
         )
     )
-    return findings
+    return add_fingerprints(findings, inventory.get("account", {}).get("account_id"))
 
 
-def _match_required_permissions(required: List[str], grants: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    matched: List[Dict[str, Any]] = []
+def _match_required_permissions(required: list[str], grants: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    matched: list[dict[str, Any]] = []
     for permission in required:
-        grant = next((candidate for candidate in grants if grant_allows(candidate, permission)), None)
-        if not grant:
+        decision = effective_grant_for_action(grants, permission)
+        if not decision:
             return []
-        matched.append({"permission": permission, "grant": _grant_evidence(grant)})
+        matched.append(
+            {
+                "permission": permission,
+                "grant": _grant_evidence(decision["grant"]),
+                "constrained": decision["constrained"],
+                "uncertainties": decision["uncertainties"],
+            }
+        )
     return matched
 
 
 def _permission_finding(
     rule: Rule,
-    principal: Dict[str, Any],
-    matched: List[Dict[str, Any]],
-    inventory: Dict[str, Any],
-) -> Dict[str, Any]:
+    principal: dict[str, Any],
+    matched: list[dict[str, Any]],
+    inventory: dict[str, Any],
+) -> dict[str, Any]:
     status = "confirmed"
     if any("passable role" in p.lower() for p in rule.prerequisites):
         status = _passrole_status(principal, inventory)
+    if any(item.get("constrained") for item in matched):
+        status = "potential"
     return {
         "id": rule.id,
         "title": rule.name,
@@ -120,18 +134,24 @@ def _permission_finding(
         "business_impact": rule.business_impact,
         "recommended_action": rule.recommendation,
         "attack_path": _attack_path(principal, matched),
+        "path_steps": _path_steps(principal, matched),
+        "target_capability": rule.name,
         "evidence": matched,
         "prerequisites": rule.prerequisites,
     }
 
 
-def _passrole_status(principal: Dict[str, Any], inventory: Dict[str, Any]) -> str:
+def _passrole_status(principal: dict[str, Any], inventory: dict[str, Any]) -> str:
     passable_roles = []
-    for grant in inventory.get("grants", []):
-        if grant.get("principal_name") != principal["name"] or grant.get("principal_type") != principal["type"]:
-            continue
-        if grant_allows(grant, "iam:PassRole"):
-            passable_roles.extend(grant.get("resources", []))
+    grants = [
+        grant
+        for grant in inventory.get("grants", [])
+        if (grant.get("principal_name") == principal["name"] and grant.get("principal_type") == principal["type"])
+        or grant.get("principal_type") == "global"
+    ]
+    decision = effective_grant_for_action(grants, "iam:PassRole")
+    if decision:
+        passable_roles.extend(decision["grant"].get("resources", []))
     if not passable_roles:
         return "potential"
     if "*" in passable_roles or any(resource_is_broad([resource]) for resource in passable_roles):
@@ -140,19 +160,22 @@ def _passrole_status(principal: Dict[str, Any], inventory: Dict[str, Any]) -> st
     return "likely" if any(role in role_arns for role in passable_roles) else "potential"
 
 
-def _grant_evidence(grant: Dict[str, Any]) -> Dict[str, Any]:
+def _grant_evidence(grant: dict[str, Any]) -> dict[str, Any]:
     return {
         "source": grant.get("source"),
         "inherited_via": grant.get("inherited_via"),
         "actions": grant.get("actions", []),
         "not_actions": grant.get("not_actions", []),
         "resources": grant.get("resources", []),
+        "not_resources": grant.get("not_resources", []),
+        "effect": grant.get("effect", "allow"),
+        "policy_scope": grant.get("policy_scope", "identity"),
         "conditions": grant.get("conditions", {}),
         "statement_index": grant.get("statement_index"),
     }
 
 
-def _attack_path(principal: Dict[str, Any], matched: List[Dict[str, Any]]) -> str:
+def _attack_path(principal: dict[str, Any], matched: list[dict[str, Any]]) -> str:
     parts = [f"{principal['type']}:{principal['name']}"]
     for item in matched:
         source = item["grant"]["source"]
@@ -164,8 +187,34 @@ def _attack_path(principal: Dict[str, Any], matched: List[Dict[str, Any]]) -> st
     return " -> ".join(parts)
 
 
-def _credential_findings(inventory: Dict[str, Any], threshold: int) -> List[Dict[str, Any]]:
-    findings: List[Dict[str, Any]] = []
+def _path_steps(principal: dict[str, Any], matched: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    steps = [
+        {
+            "type": "principal",
+            "label": f"{principal['type']}:{principal['name']}",
+            "principal_type": principal["type"],
+        }
+    ]
+    for item in matched:
+        grant = item["grant"]
+        inherited = grant.get("inherited_via")
+        if inherited:
+            steps.append({"type": "inheritance", "label": inherited})
+        steps.append(
+            {
+                "type": "permission",
+                "label": item["permission"],
+                "source": grant.get("source"),
+                "resources": grant.get("resources", []),
+                "constrained": item.get("constrained", False),
+                "uncertainties": item.get("uncertainties", []),
+            }
+        )
+    return steps
+
+
+def _credential_findings(inventory: dict[str, Any], threshold: int) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
     for user in inventory.get("users", []):
         for key in user.get("access_keys", []):
             age = key.get("age_days")
@@ -181,8 +230,13 @@ def _credential_findings(inventory: Dict[str, Any], threshold: int) -> List[Dict
                         "principal": user["name"],
                         "principal_type": "user",
                         "source": ["AWS IAM best practices", "Datadog State of Cloud Security 2025"],
-                        "business_impact": "Long-lived access keys increase the blast radius of developer workstation, CI, or repository compromise.",
-                        "recommended_action": "Rotate or remove the key, prefer temporary credentials, and move human users to federation/IAM Identity Center where possible.",
+                        "business_impact": (
+                            "Long-lived access keys increase the blast radius of developer workstation, CI, or repository compromise."
+                        ),
+                        "recommended_action": (
+                            "Rotate or remove the key, prefer temporary credentials, and move human users to federation or IAM Identity "
+                            "Center where possible."
+                        ),
                         "attack_path": f"user:{user['name']} -> active access key age {age} days",
                         "evidence": [{"access_key_id": key.get("access_key_id"), "age_days": age, "last_used": key.get("last_used")}],
                         "prerequisites": [],
@@ -203,15 +257,20 @@ def _credential_findings(inventory: Dict[str, Any], threshold: int) -> List[Dict
                     "business_impact": "A phished or reused password can provide direct console access without a second factor.",
                     "recommended_action": "Require MFA immediately and migrate human access to federated SSO where practical.",
                     "attack_path": f"user:{user['name']} -> console password -> no MFA",
-                    "evidence": [{"password_enabled": True, "mfa_enabled": False}],
+                    "evidence": [
+                        {
+                            "password_enabled": user.get("password_enabled"),
+                            "mfa_enabled": user.get("mfa_enabled"),
+                        }
+                    ],
                     "prerequisites": [],
                 }
             )
     return [finding for finding in findings if SEVERITY_ORDER[finding["severity"]] >= threshold]
 
 
-def _trust_findings(inventory: Dict[str, Any], threshold: int) -> List[Dict[str, Any]]:
-    findings: List[Dict[str, Any]] = []
+def _trust_findings(inventory: dict[str, Any], threshold: int) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
     if threshold > SEVERITY_ORDER["high"]:
         return findings
     account_id = inventory.get("account", {}).get("account_id")
@@ -233,9 +292,19 @@ def _trust_findings(inventory: Dict[str, Any], threshold: int) -> List[Dict[str,
                         "status": "likely",
                         "principal": role["name"],
                         "principal_type": "role",
-                        "source": ["WithSecure IAMGraph research", "AWS IAM confused deputy guidance", "Datadog cloud security research"],
-                        "business_impact": "A third-party or broad trust relationship can become a lateral movement or supply-chain entry point if not tightly scoped.",
-                        "recommended_action": "Scope trusted principals tightly, require sts:ExternalId for third parties, and review whether this role still needs cross-account trust.",
+                        "source": [
+                            "WithSecure IAMGraph research",
+                            "AWS IAM confused deputy guidance",
+                            "Datadog cloud security research",
+                        ],
+                        "business_impact": (
+                            "A third-party or broad trust relationship can become a lateral movement or supply-chain entry point if not "
+                            "tightly scoped."
+                        ),
+                        "recommended_action": (
+                            "Scope trusted principals tightly, require sts:ExternalId for third parties, and review whether this role "
+                            "still needs cross-account trust."
+                        ),
                         "attack_path": f"external principal -> sts:AssumeRole -> role:{role['name']}",
                         "evidence": [{"trusted_principals": principals, "condition": condition}],
                         "prerequisites": ["Trusted principal has or obtains sts:AssumeRole permission."],
@@ -247,18 +316,15 @@ def _trust_findings(inventory: Dict[str, Any], threshold: int) -> List[Dict[str,
 def _is_external_principal(principals: Iterable[str], account_id: str | None) -> bool:
     if not account_id:
         return any(":root" in principal or ":role/" in principal or ":user/" in principal for principal in principals)
-    return any(
-        principal.startswith("arn:aws:iam::") and f"::{account_id}:" not in principal
-        for principal in principals
-    )
+    return any(principal.startswith("arn:aws:iam::") and f"::{account_id}:" not in principal for principal in principals)
 
 
-def _has_external_id_condition(condition: Dict[str, Any]) -> bool:
+def _has_external_id_condition(condition: dict[str, Any]) -> bool:
     text = json.dumps(condition).lower()
     return "sts:externalid" in text
 
 
-def _access_analyzer_findings(inventory: Dict[str, Any], threshold: int) -> List[Dict[str, Any]]:
+def _access_analyzer_findings(inventory: dict[str, Any], threshold: int) -> list[dict[str, Any]]:
     if threshold > SEVERITY_ORDER["medium"]:
         return []
     findings = []
@@ -275,7 +341,9 @@ def _access_analyzer_findings(inventory: Dict[str, Any], threshold: int) -> List
                 "principal_type": "resource",
                 "source": ["AWS IAM Access Analyzer"],
                 "business_impact": item.get("findingType", "AWS identified access analyzer exposure."),
-                "recommended_action": "Review the native Access Analyzer finding and remediate according to resource ownership and business need.",
+                "recommended_action": (
+                    "Review the native Access Analyzer finding and remediate according to resource ownership and business need."
+                ),
                 "attack_path": str(item.get("resource", "unknown")),
                 "evidence": [item],
                 "prerequisites": [],

@@ -1,0 +1,27 @@
+name: Detection rule proposal
+description: Propose a research-attributed AWS IAM attack path
+body:
+  - type: input
+    id: path
+    attributes:
+      label: Attack path name
+    validations:
+      required: true
+  - type: textarea
+    id: permissions
+    attributes:
+      label: Required permissions and prerequisites
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Primary research and AWS references
+    validations:
+      required: true
+  - type: textarea
+    id: fixtures
+    attributes:
+      label: Positive and negative synthetic fixtures
+    validations:
+      required: true

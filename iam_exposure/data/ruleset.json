@@ -1,5 +1,7 @@
 {
-  "id": "bundled-2026-04",
+  "id": "bundled-2026-07",
+  "schema_version": "1.0",
+  "published_at": "2026-07-20",
   "name": "Bundled AWS IAM Exposure Rules",
   "description": "Offline snapshot of high-risk AWS IAM permissions and privilege escalation patterns inspired by Rhino Security Labs, NCC Group/PMapper, Bishop Fox, Cloudsplaining, HackTricks, pathfinding.cloud, WithSecure IAMGraph research, Datadog cloud security research, and AWS IAM guidance.",
   "license_note": "Rule wording is original project content with source attribution. Review upstream licenses before importing external machine-readable rules directly.",

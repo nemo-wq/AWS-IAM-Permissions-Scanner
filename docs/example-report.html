@@ -20,15 +20,17 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Aptos, "Avenir Next", "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
 main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 56px; }
-.hero { border-bottom: 1px solid var(--line); padding: 28px 0 24px; }
+.report-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; border-bottom: 1px solid var(--line); padding: 28px 0 24px; }
+.title-block { min-width: 0; }
+.report-header .meta { grid-column: 1 / -1; }
 .eyebrow { color: var(--blue); font-weight: 700; letter-spacing: 0; text-transform: uppercase; font-size: 13px; margin: 0 0 8px; }
 h1 { font-size: 42px; line-height: 1.08; margin: 0; }
 h2 { font-size: 20px; margin: 0 0 14px; }
 .lede { max-width: 760px; color: var(--muted); font-size: 18px; line-height: 1.5; }
 .meta { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: 13px; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: normal; word-break: break-word; }
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 22px 0; }
-.metrics div, section.grid > div, section:not(.hero):not(.metrics):not(.grid) { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+.metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 22px 0; }
+.metrics div, section.grid > div, .assessment-brief, .change-band, .rules-coverage, main > section.practitioner-only:not(.path-inbox) { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
 .metrics strong { display: block; font-size: 32px; line-height: 1; }
 .metrics span, small, .split-list span { color: var(--muted); }
 .brief-grid { display:grid; grid-template-columns: 1.1fr 1.4fr 1.2fr .8fr; gap: 14px; }
@@ -38,6 +40,27 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; wh
 .brief-label { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0; }
 section { margin: 18px 0; }
+.section-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:14px; }
+.section-heading h2 { margin-bottom:0; }
+.section-kicker { margin:0 0 4px; color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; }
+.view-switch { display:flex; gap:4px; padding:4px; background:#eef2f6; border:1px solid var(--line); border-radius:8px; }
+.view-switch button { min-height:36px; border:0; border-radius:6px; padding:0 12px; background:transparent; color:var(--muted); font:inherit; font-weight:700; cursor:pointer; }
+.view-switch button.active { background:var(--panel); color:var(--ink); box-shadow:0 1px 2px rgba(16,24,40,.08); }
+.coverage-state { border-radius:6px; padding:6px 9px; font-size:12px; font-weight:700; }
+.coverage-state.complete { color:var(--green); background:#ecfdf3; }
+.coverage-state.degraded { color:var(--amber); background:#fffaeb; }
+.change-list { list-style:none; display:grid; gap:0; margin:0; padding:0; }
+.change-list li { display:grid; grid-template-columns:90px minmax(0,1fr); align-items:start; gap:12px; padding:11px 0; border-top:1px solid var(--line); }
+.change-list li:first-child { border-top:0; }
+.change-list strong, .change-list small { display:block; }
+.change-list small { margin-top:3px; color:var(--muted); }
+.change-badge, .state-badge { display:inline-flex; width:max-content; align-items:center; min-height:24px; border:1px solid var(--line); border-radius:6px; padding:2px 7px; background:#f8fafc; color:var(--muted); font-size:11px; font-weight:700; }
+.change-new .change-badge, .path-card[data-lifecycle="new"] .change-badge { color:var(--blue); background:#eff8ff; border-color:#b2ddff; }
+.change-worsened .change-badge, .path-card[data-lifecycle="worsened"] .change-badge { color:var(--red); background:#fef3f2; border-color:#fecdca; }
+.change-resolved .change-badge { color:var(--green); background:#ecfdf3; border-color:#abefc6; }
+.quiet-state { display:flex; justify-content:space-between; gap:18px; color:var(--muted); }
+.quiet-state strong { color:var(--green); }
+.change-more { margin:12px 0 0; color:var(--muted); }
 .fixes { padding-left: 22px; line-height: 1.65; }
 .split-list { list-style: none; padding: 0; margin: 0; }
 .split-list li { display: flex; justify-content: space-between; gap: 18px; border-top: 1px solid var(--line); padding: 10px 0; }
@@ -73,54 +96,105 @@ th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spa
 .pie-chart::after { content: ""; position: absolute; inset: 24%; background: var(--panel); border-radius: 50%; border: 1px solid var(--line); }
 .trend-svg { width: 100%; height: auto; display: block; }
 .empty-chart { color: var(--muted); }
+.practitioner-only { display:none; }
+body.mode-practitioner .practitioner-only { display:block; }
+.path-inbox { padding:8px 0 0; }
+.filters { display:grid; grid-template-columns:2fr repeat(3, minmax(130px, 1fr)); gap:12px; align-items:end; margin:0 0 16px; }
+.filters label { display:grid; gap:5px; color:var(--muted); font-size:12px; font-weight:700; }
+.filters input, .filters select { width:100%; min-height:42px; border:1px solid var(--line); border-radius:6px; background:var(--panel); color:var(--ink); padding:8px 10px; font:inherit; font-weight:400; }
+.filters input:focus, .filters select:focus, button:focus-visible, summary:focus-visible { outline:3px solid #b2ddff; outline-offset:2px; }
+.path-list { display:grid; gap:12px; }
+.path-card { background:var(--panel); border:1px solid var(--line); border-left:5px solid var(--blue); border-radius:8px; padding:18px; min-width:0; }
+.path-card.sev-critical { border-left-color:var(--red); }
+.path-card.sev-high { border-left-color:var(--amber); }
+.path-card.sev-low { border-left-color:var(--green); }
+.path-card[hidden] { display:none; }
+.path-card-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.badges { display:flex; flex-wrap:wrap; gap:6px; }
+.path-card h3 { margin:14px 0 6px; font-size:19px; }
+.impact { margin:0 0 14px; color:var(--muted); line-height:1.5; }
+.path-line { display:grid; grid-template-columns:140px minmax(0,1fr); gap:12px; padding:9px 0; border-top:1px solid var(--line); }
+.path-line span { color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; }
+.remediation { margin:12px 0; padding:12px 14px; border-left:4px solid var(--green); background:#f6fef9; }
+.remediation p { margin:5px 0 0; }
+details { border-top:1px solid var(--line); padding-top:12px; }
+summary { cursor:pointer; color:var(--blue); font-weight:700; }
+pre { max-height:360px; overflow:auto; border:1px solid var(--line); border-radius:6px; padding:12px; background:#f8fafc; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.empty-state { padding:32px; text-align:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; }
 @media (max-width: 800px) {
   h1 { font-size: 30px; }
-  .metrics, .grid, .brief-grid { grid-template-columns: 1fr; }
+  .report-header, .metrics, .grid, .brief-grid, .filters { grid-template-columns: 1fr; }
+  .report-header .meta { grid-column:auto; }
+  .view-switch { width:max-content; }
+  .path-line { grid-template-columns:1fr; gap:4px; }
+  .section-heading, .quiet-state { flex-direction:column; }
   .comparison-grid { grid-template-columns: 1fr; }
+}
+@media print {
+  body { background:#fff; }
+  main { width:100%; padding:0; }
+  .view-switch, .filters { display:none !important; }
+  .practitioner-only { display:block !important; }
+  .path-card, section { break-inside:avoid; }
 }
 </style>
 </head>
 <body>
   <main>
-    <section class="hero">
-      <p class="eyebrow">AWS IAM Exposure Review</p>
-      <h1>example-aws-account</h1>
-      <p class="lede">Privilege escalation, credential exposure, and trust-path assurance for red-team-grade AWS assessments.</p>
-      <div class="meta">
-        <span>Account <code>123456789012</code></span>
-        <span>Generated 2026-05-31T00:00:00+00:00</span>
-        <span>Caller <code>arn:aws:sts::123456789012:assumed-role/SecurityAudit/example-session</code></span>
+    <header class="report-header">
+      <div class="title-block">
+        <p class="eyebrow">AWS IAM Exposure Review</p>
+        <h1>Example Production</h1>
+        <p class="lede">Who can gain more access, how they get there, and what changed since the previous assessment.</p>
       </div>
-    </section>
+      <div class="view-switch" aria-label="Report detail level">
+        <button type="button" class="active" data-mode="executive">Executive</button>
+        <button type="button" data-mode="practitioner">Practitioner</button>
+      </div>
+      <div class="meta">
+        <span>Account <code>111111111111</code></span>
+        <span>Generated 2026-07-20T10:08:01+00:00</span>
+        <span>Caller <code>arn:aws:sts::111111111111:assumed-role/IAMExposureReviewReadOnly/example</code></span>
+      </div>
+    </header>
 
     <section class="metrics">
-      <div><strong>4</strong><span>Total findings</span></div>
-      <div><strong>4</strong><span>Critical/high</span></div>
-      <div><strong>44</strong><span>Assurance score</span></div>
-      <div><strong>3</strong><span>Enabled rules</span></div>
+      <div><strong>4</strong><span>New paths</span></div>
+      <div><strong>0</strong><span>Worsened</span></div>
+      <div><strong>0</strong><span>Resolved</span></div>
+      <div><strong>3</strong><span>Critical/high open</span></div>
+      <div><strong>50</strong><span>Assurance score</span></div>
     </section>
 
-    <section>
+    <section class="change-band">
+      <div class="section-heading">
+        <div><p class="section-kicker">Since the last complete scan</p><h2>What Changed</h2></div>
+        <span class="coverage-state complete">Complete comparison</span>
+      </div>
+      <ol class='change-list'><li class='change-new'><span class='change-badge'>New</span><div><strong>Can attach policies to users</strong><small><code>alice</code> · CRITICAL · baseline</small></div></li><li class='change-new'><span class='change-badge'>New</span><div><strong>Can pass roles to Lambda</strong><small><code>bob</code> · CRITICAL · baseline</small></div></li><li class='change-new'><span class='change-badge'>New</span><div><strong>External or broad role trust without ExternalId</strong><small><code>VendorSupport</code> · HIGH · baseline</small></div></li><li class='change-new'><span class='change-badge'>New</span><div><strong>Long-lived active IAM access key</strong><small><code>bob</code> · MEDIUM · baseline</small></div></li></ol>
+    </section>
+
+    <section class="assessment-brief">
       <h2>Assessment Brief</h2>
       
 <div class="brief-grid">
   <div>
     <span class="brief-label">Fix first</span>
-    <strong>Direct administrator-equivalent permissions</strong>
-    <small>Principal: <code>alice.admin</code></small>
+    <strong>Can attach policies to users</strong>
+    <small>Principal: <code>alice</code></small>
   </div>
   <div>
     <span class="brief-label">Proof</span>
-    <code>user:alice.admin -&gt; group:CloudAdmins -&gt; managed:AdministratorAccess -&gt; *</code>
+    <code>user:alice -&gt; group:Platform -&gt; group-inline:Platform/Escalate -&gt; iam:AttachUserPolicy</code>
   </div>
   <div>
     <span class="brief-label">Action</span>
-    <p>Remove direct administrator access and replace it with a scoped break-glass role.</p>
+    <p>Remove direct policy attachment rights from users and require controlled role-based administration.</p>
   </div>
   <div>
     <span class="brief-label">Assurance</span>
-    <strong>44/100</strong>
-    <small>4 critical/high findings · 1 collection warnings</small>
+    <strong>50/100</strong>
+    <small>3 critical/high findings · 1 collection warnings</small>
   </div>
 </div>
 
@@ -129,109 +203,276 @@ th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spa
     <section class="grid">
       <div>
         <h2>Risk Reduction Priorities</h2>
-        <ol class="fixes"><li><strong>CRITICAL</strong> Direct administrator-equivalent permissions on <code>alice.admin</code></li>
-<li><strong>CRITICAL</strong> Can pass roles to CodeBuild on <code>build.operator</code></li>
-<li><strong>HIGH</strong> External or broad role trust without ExternalId on <code>VendorAuditRole</code></li>
-<li><strong>HIGH</strong> IAM console user without MFA on <code>alice.admin</code></li></ol>
+        <ol class="fixes"><li><strong>CRITICAL</strong> Can attach policies to users on <code>alice</code></li>
+<li><strong>CRITICAL</strong> Can pass roles to Lambda on <code>bob</code></li>
+<li><strong>HIGH</strong> External or broad role trust without ExternalId on <code>VendorSupport</code></li>
+<li><strong>MEDIUM</strong> Long-lived active IAM access key on <code>bob</code></li></ol>
       </div>
       <div>
         <h2>Top Risky Principals</h2>
-        <ul class="split-list"><li><code>alice.admin</code><span>2 findings</span></li>
-<li><code>build.operator</code><span>1 findings</span></li>
-<li><code>VendorAuditRole</code><span>1 findings</span></li></ul>
-      </div>
-    </section>
-
-    <section class="grid">
-      <div>
-        <h2>Finding Categories</h2>
-        <ul class="split-list"><li><span>Self Escalation</span><strong>1</strong></li>
-<li><span>Iam Passrole Path</span><strong>1</strong></li>
-<li><span>Cross Account And Third Party Trust</span><strong>1</strong></li>
-<li><span>Credential And Legacy Iam Risk</span><strong>1</strong></li></ul>
-      </div>
-      <div>
-        <h2>Rules Coverage</h2>
-        <p>Synthetic bundled-rule snapshot for the example report.</p>
-        <p><strong>Sources:</strong> AWS IAM, AWS IAM confused deputy guidance, Bishop Fox, Cloudsplaining, HackTricks, Rhino Security Labs, WithSecure IAMGraph research, pathfinding.cloud</p>
+        <ul class="split-list"><li><code>bob</code><span>2 findings</span></li>
+<li><code>alice</code><span>1 findings</span></li>
+<li><code>VendorSupport</code><span>1 findings</span></li></ul>
       </div>
     </section>
 
     <section class="grid charts">
       <div>
         <h2>Severity Breakdown</h2>
-        <div class='stacked-bar'><span style='width:50.00%;background:#b42318' title='critical: 2'></span><span style='width:50.00%;background:#b54708' title='high: 2'></span></div><ul class='legend'><li><span class='legend-swatch' style='background:#b42318'></span>Critical <strong>2</strong></li><li><span class='legend-swatch' style='background:#b54708'></span>High <strong>2</strong></li></ul>
+        <div class='stacked-bar'><span style='width:50.00%;background:#b42318' title='critical: 2'></span><span style='width:25.00%;background:#b54708' title='high: 1'></span><span style='width:25.00%;background:#175cd3' title='medium: 1'></span></div><ul class='legend'><li><span class='legend-swatch' style='background:#b42318'></span>Critical <strong>2</strong></li><li><span class='legend-swatch' style='background:#b54708'></span>High <strong>1</strong></li><li><span class='legend-swatch' style='background:#175cd3'></span>Medium <strong>1</strong></li></ul>
       </div>
       <div>
         <h2>Top Risky Principals</h2>
-        <ul class='chart-list'><li><span>alice.admin</span><div class='bar-wrap'><i style='width:100.00%;background:#175cd3'></i><em>2 findings</em></div></li><li><span>build.operator</span><div class='bar-wrap'><i style='width:50.00%;background:#175cd3'></i><em>1 findings</em></div></li><li><span>VendorAuditRole</span><div class='bar-wrap'><i style='width:50.00%;background:#175cd3'></i><em>1 findings</em></div></li></ul>
+        <ul class='chart-list'><li><span>bob</span><div class='bar-wrap'><i style='width:100.00%;background:#175cd3'></i><em>2 findings</em></div></li><li><span>alice</span><div class='bar-wrap'><i style='width:50.00%;background:#175cd3'></i><em>1 findings</em></div></li><li><span>VendorSupport</span><div class='bar-wrap'><i style='width:50.00%;background:#175cd3'></i><em>1 findings</em></div></li></ul>
       </div>
     </section>
 
     <section class="grid charts">
-      <div>
-        <h2>Finding Categories</h2>
-        <div class='pie-chart' style='background: conic-gradient(#175cd3 0.00deg 90.00deg, #067647 90.00deg 180.00deg, #b54708 180.00deg 270.00deg, #b42318 270.00deg 360.00deg)'></div><ul class='legend'><li><span class='legend-swatch' style='background:#175cd3'></span>Self Escalation <strong>1</strong></li><li><span class='legend-swatch' style='background:#067647'></span>Iam Passrole Path <strong>1</strong></li><li><span class='legend-swatch' style='background:#b54708'></span>Cross Account And Third Party Trust <strong>1</strong></li><li><span class='legend-swatch' style='background:#b42318'></span>Credential And Legacy Iam Risk <strong>1</strong></li></ul>
-      </div>
       <div>
         <h2>Risk Trend</h2>
         
 <svg viewBox="0 0 620 220" class="trend-svg" role="img" aria-label="Risk trend line">
   <line x1='30' y1='25' x2='590' y2='25' stroke='#e4e7ec' /><line x1='30' y1='75' x2='590' y2='75' stroke='#e4e7ec' /><line x1='30' y1='125' x2='590' y2='125' stroke='#e4e7ec' /><line x1='30' y1='175' x2='590' y2='175' stroke='#e4e7ec' />
   <polyline points="30.0,195.0" fill="none" stroke="#175cd3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
-  <circle cx='30.0' cy='195.0' r='4' fill='#175cd3'><title>2026-05-31T00:00:00+00:00: score 44</title></circle>
+  <circle cx='30.0' cy='195.0' r='4' fill='#175cd3'><title>2026-07-20T10:08:01+00:00: score 50</title></circle>
 </svg>
 
       </div>
-    </section>
-
-    <section class="grid charts">
       <div>
         <h2>Attack Path Distribution</h2>
         <div class='pie-chart' style='background: conic-gradient(#175cd3 0.00deg 90.00deg, #067647 90.00deg 180.00deg, #b54708 180.00deg 270.00deg, #b42318 270.00deg 360.00deg)'></div><ul class='legend'><li><span class='legend-swatch' style='background:#175cd3'></span>Self Escalation <strong>1</strong></li><li><span class='legend-swatch' style='background:#067647'></span>Iam Passrole Path <strong>1</strong></li><li><span class='legend-swatch' style='background:#b54708'></span>Cross Account And Third Party Trust <strong>1</strong></li><li><span class='legend-swatch' style='background:#b42318'></span>Credential And Legacy Iam Risk <strong>1</strong></li></ul>
       </div>
       <div>
         <h2>Collection Coverage</h2>
-        <ul class='chart-list'><li><span>Users</span><div class='bar-wrap'><i style='width:100.00%;background:#175cd3'></i><em>2</em></div></li><li><span>Roles</span><div class='bar-wrap'><i style='width:50.00%;background:#067647'></i><em>1</em></div></li><li><span>Groups</span><div class='bar-wrap'><i style='width:100.00%;background:#b54708'></i><em>2</em></div></li><li><span>Warnings</span><div class='bar-wrap'><i style='width:50.00%;background:#b42318'></i><em>1</em></div></li></ul>
+        <ul class='chart-list'><li><span>Users</span><div class='bar-wrap'><i style='width:100.00%;background:#175cd3'></i><em>2</em></div></li><li><span>Roles</span><div class='bar-wrap'><i style='width:100.00%;background:#067647'></i><em>2</em></div></li><li><span>Groups</span><div class='bar-wrap'><i style='width:50.00%;background:#b54708'></i><em>1</em></div></li><li><span>Warnings</span><div class='bar-wrap'><i style='width:50.00%;background:#b42318'></i><em>1</em></div></li></ul>
       </div>
     </section>
 
-    <section>
+    <section class="practitioner-only">
       <h2>Attack Graph</h2>
       <div class="graph-metrics">
-        <div><strong>29</strong><span>Nodes</span></div>
-        <div><strong>42</strong><span>Edges</span></div>
-        <div><strong>3</strong><span>Principals</span></div>
-        <div><strong>5</strong><span>Policies</span></div>
-        <div><strong>7</strong><span>Grants</span></div>
-        <div><strong>9</strong><span>Actions</span></div>
+        <div><strong>24</strong><span>Nodes</span></div>
+        <div><strong>21</strong><span>Edges</span></div>
+        <div><strong>4</strong><span>Principals</span></div>
+        <div><strong>0</strong><span>Policies</span></div>
+        <div><strong>2</strong><span>Grants</span></div>
+        <div><strong>3</strong><span>Actions</span></div>
+        <div><strong>4</strong><span>Paths</span></div>
+        <div><strong>4</strong><span>Capabilities</span></div>
       </div>
     </section>
 
-    <section>
-      <h2>What Changed</h2>
-      <p class='empty-chart'>This is the first scan in this output folder. Run another scan here to compare results and show risk reduction over time.</p>
+    <section class="practitioner-only rules-coverage">
+      <h2>Rules Coverage</h2>
+      <p>Offline snapshot of high-risk AWS IAM permissions and privilege escalation patterns inspired by Rhino Security Labs, NCC Group/PMapper, Bishop Fox, Cloudsplaining, HackTricks, pathfinding.cloud, WithSecure IAMGraph research, Datadog cloud security research, and AWS IAM guidance.</p>
+      <p><strong>32 rules.</strong> Sources: AWS IAM, Bishop Fox, Cloudsplaining, HackTricks, NCC Group/PMapper, Rhino Security Labs, pathfinding.cloud</p>
     </section>
 
-    <section>
-      <h2>Attack Path Findings</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Severity</th><th>Status</th><th>Principal</th><th>Finding</th><th>Attack path</th><th>Recommendation</th></tr>
-          </thead>
-          <tbody><tr class='sev-critical'><td><span class='badge'>CRITICAL</span></td><td>confirmed</td><td><code>alice.admin</code><br><small>user</small></td><td><strong>Direct administrator-equivalent permissions</strong><br><small>The principal can perform administrator-level actions across the account.</small></td><td><code>user:alice.admin -&gt; group:CloudAdmins -&gt; managed:AdministratorAccess -&gt; *</code></td><td>Remove direct administrator access and replace it with a scoped break-glass role.</td></tr>
-<tr class='sev-critical'><td><span class='badge'>CRITICAL</span></td><td>likely</td><td><code>build.operator</code><br><small>user</small></td><td><strong>Can pass roles to CodeBuild</strong><br><small>The principal may be able to run build jobs under a privileged service role.</small></td><td><code>user:build.operator -&gt; managed:DeveloperBuildAccess -&gt; iam:PassRole -&gt; codebuild:CreateProject</code></td><td>Restrict CodeBuild project creation and scope iam:PassRole to approved CI roles.</td></tr>
-<tr class='sev-high'><td><span class='badge'>HIGH</span></td><td>likely</td><td><code>VendorAuditRole</code><br><small>role</small></td><td><strong>External or broad role trust without ExternalId</strong><br><small>A third-party or broad trust relationship can become a lateral movement or supply-chain entry point if not tightly scoped.</small></td><td><code>external principal -&gt; sts:AssumeRole -&gt; role:VendorAuditRole</code></td><td>Scope trusted principals tightly and require sts:ExternalId for third-party access.</td></tr>
-<tr class='sev-high'><td><span class='badge'>HIGH</span></td><td>confirmed</td><td><code>alice.admin</code><br><small>user</small></td><td><strong>IAM console user without MFA</strong><br><small>A phished or reused password can provide direct console access without a second factor.</small></td><td><code>user:alice.admin -&gt; console password -&gt; no MFA</code></td><td>Require MFA immediately and migrate human access to federated SSO where practical.</td></tr></tbody>
-        </table>
+    <section class="practitioner-only path-inbox" id="attack-paths">
+      <div class="section-heading">
+        <div><p class="section-kicker">Evidence and remediation</p><h2>Attack Path Inbox</h2></div>
+        <span id="visible-count">4 paths</span>
       </div>
+      <div class="filters" aria-label="Attack path filters">
+        <label>Search<input id="path-search" type="search" placeholder="Principal, permission, path or rule"></label>
+        <label>Severity<select id="severity-filter"><option value="all">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+        <label>Confidence<select id="status-filter"><option value="all">All</option><option value="confirmed">Confirmed</option><option value="likely">Likely</option><option value="potential">Potential</option></select></label>
+        <label>Change<select id="lifecycle-filter"><option value="all">All</option><option value="new">New</option><option value="worsened">Worsened</option><option value="open">Open</option><option value="improved">Improved</option></select></label>
+      </div>
+      <div class="path-list">
+<article class="path-card sev-critical" data-severity="critical" data-status="confirmed" data-lifecycle="new" data-search="iam.attach-user-policy can attach policies to users alice user self-escalation user:alice -&gt; group:platform -&gt; group-inline:platform/escalate -&gt; iam:attachuserpolicy">
+  <div class="path-card-head">
+    <div class="badges"><span class="badge">CRITICAL</span><span class="state-badge">Confirmed</span><span class="change-badge">New</span></div>
+    <code>#b2f4f62e2ba8</code>
+  </div>
+  <h3>Can attach policies to users</h3>
+  <p class="impact">The principal may be able to attach administrator access to itself or another user.</p>
+  <div class="path-line"><span>Starting principal</span><code>user:alice</code></div>
+  <div class="path-line"><span>Observed path</span><code>user:alice -&gt; group:Platform -&gt; group-inline:Platform/Escalate -&gt; iam:AttachUserPolicy</code></div>
+  <div class="remediation"><strong>Reduce the path</strong><p>Remove direct policy attachment rights from users and require controlled role-based administration.</p></div>
+  <details>
+    <summary>Technical evidence and attribution</summary>
+    <p><strong>Rule:</strong> <code>iam.attach-user-policy</code></p>
+    <p><strong>Research:</strong> Rhino Security Labs · NCC Group/PMapper · pathfinding.cloud</p>
+    <pre>[
+  {
+    &quot;constrained&quot;: false,
+    &quot;grant&quot;: {
+      &quot;actions&quot;: [
+        &quot;iam:AttachUserPolicy&quot;
+      ],
+      &quot;conditions&quot;: {},
+      &quot;effect&quot;: &quot;allow&quot;,
+      &quot;inherited_via&quot;: &quot;group:Platform&quot;,
+      &quot;not_actions&quot;: [],
+      &quot;not_resources&quot;: [],
+      &quot;policy_scope&quot;: &quot;identity&quot;,
+      &quot;resources&quot;: [
+        &quot;*&quot;
+      ],
+      &quot;source&quot;: &quot;group-inline:Platform/Escalate&quot;,
+      &quot;statement_index&quot;: 0
+    },
+    &quot;permission&quot;: &quot;iam:AttachUserPolicy&quot;,
+    &quot;uncertainties&quot;: []
+  }
+]</pre>
+  </details>
+</article>
+
+
+<article class="path-card sev-critical" data-severity="critical" data-status="likely" data-lifecycle="new" data-search="passrole.lambda-create-function can pass roles to lambda bob user iam-passrole-path user:bob -&gt; user-inline:bob/deploy -&gt; iam:passrole -&gt; user-inline:bob/deploy -&gt; lambda:createfunction">
+  <div class="path-card-head">
+    <div class="badges"><span class="badge">CRITICAL</span><span class="state-badge">Likely</span><span class="change-badge">New</span></div>
+    <code>#73d532852f8b</code>
+  </div>
+  <h3>Can pass roles to Lambda</h3>
+  <p class="impact">The principal may be able to create code that runs under a more privileged Lambda execution role.</p>
+  <div class="path-line"><span>Starting principal</span><code>user:bob</code></div>
+  <div class="path-line"><span>Observed path</span><code>user:bob -&gt; user-inline:bob/Deploy -&gt; iam:PassRole -&gt; user-inline:bob/Deploy -&gt; lambda:CreateFunction</code></div>
+  <div class="remediation"><strong>Reduce the path</strong><p>Scope iam:PassRole to approved Lambda roles and restrict function creation to deployment pipelines.</p></div>
+  <details>
+    <summary>Technical evidence and attribution</summary>
+    <p><strong>Rule:</strong> <code>passrole.lambda-create-function</code></p>
+    <p><strong>Research:</strong> Rhino Security Labs · NCC Group/PMapper · pathfinding.cloud · HackTricks</p>
+    <pre>[
+  {
+    &quot;constrained&quot;: false,
+    &quot;grant&quot;: {
+      &quot;actions&quot;: [
+        &quot;iam:PassRole&quot;,
+        &quot;lambda:CreateFunction&quot;
+      ],
+      &quot;conditions&quot;: {},
+      &quot;effect&quot;: &quot;allow&quot;,
+      &quot;inherited_via&quot;: null,
+      &quot;not_actions&quot;: [],
+      &quot;not_resources&quot;: [],
+      &quot;policy_scope&quot;: &quot;identity&quot;,
+      &quot;resources&quot;: [
+        &quot;*&quot;
+      ],
+      &quot;source&quot;: &quot;user-inline:bob/Deploy&quot;,
+      &quot;statement_index&quot;: 0
+    },
+    &quot;permission&quot;: &quot;iam:PassRole&quot;,
+    &quot;uncertainties&quot;: []
+  },
+  {
+    &quot;constrained&quot;: false,
+    &quot;grant&quot;: {
+      &quot;actions&quot;: [
+        &quot;iam:PassRole&quot;,
+        &quot;lambda:CreateFunction&quot;
+      ],
+      &quot;conditions&quot;: {},
+      &quot;effect&quot;: &quot;allow&quot;,
+      &quot;inherited_via&quot;: null,
+      &quot;not_actions&quot;: [],
+      &quot;not_resources&quot;: [],
+      &quot;policy_scope&quot;: &quot;identity&quot;,
+      &quot;resources&quot;: [
+        &quot;*&quot;
+      ],
+      &quot;source&quot;: &quot;user-inline:bob/Deploy&quot;,
+      &quot;statement_index&quot;: 0
+    },
+    &quot;permission&quot;: &quot;lambda:CreateFunction&quot;,
+    &quot;uncertainties&quot;: []
+  }
+]</pre>
+  </details>
+</article>
+
+
+<article class="path-card sev-high" data-severity="high" data-status="likely" data-lifecycle="new" data-search="trust.external-assume-role-without-external-id external or broad role trust without externalid vendorsupport role cross-account-and-third-party-trust external principal -&gt; sts:assumerole -&gt; role:vendorsupport">
+  <div class="path-card-head">
+    <div class="badges"><span class="badge">HIGH</span><span class="state-badge">Likely</span><span class="change-badge">New</span></div>
+    <code>#dc4b9c567b8e</code>
+  </div>
+  <h3>External or broad role trust without ExternalId</h3>
+  <p class="impact">A third-party or broad trust relationship can become a lateral movement or supply-chain entry point if not tightly scoped.</p>
+  <div class="path-line"><span>Starting principal</span><code>role:VendorSupport</code></div>
+  <div class="path-line"><span>Observed path</span><code>external principal -&gt; sts:AssumeRole -&gt; role:VendorSupport</code></div>
+  <div class="remediation"><strong>Reduce the path</strong><p>Scope trusted principals tightly, require sts:ExternalId for third parties, and review whether this role still needs cross-account trust.</p></div>
+  <details>
+    <summary>Technical evidence and attribution</summary>
+    <p><strong>Rule:</strong> <code>trust.external-assume-role-without-external-id</code></p>
+    <p><strong>Research:</strong> WithSecure IAMGraph research · AWS IAM confused deputy guidance · Datadog cloud security research</p>
+    <pre>[
+  {
+    &quot;condition&quot;: {},
+    &quot;trusted_principals&quot;: [
+      &quot;arn:aws:iam::222222222222:root&quot;
+    ]
+  }
+]</pre>
+  </details>
+</article>
+
+
+<article class="path-card sev-medium" data-severity="medium" data-status="confirmed" data-lifecycle="new" data-search="credential.active-access-key-over-90-days long-lived active iam access key bob user credential-and-legacy-iam-risk user:bob -&gt; active access key age 184 days">
+  <div class="path-card-head">
+    <div class="badges"><span class="badge">MEDIUM</span><span class="state-badge">Confirmed</span><span class="change-badge">New</span></div>
+    <code>#85ddc0c64c3b</code>
+  </div>
+  <h3>Long-lived active IAM access key</h3>
+  <p class="impact">Long-lived access keys increase the blast radius of developer workstation, CI, or repository compromise.</p>
+  <div class="path-line"><span>Starting principal</span><code>user:bob</code></div>
+  <div class="path-line"><span>Observed path</span><code>user:bob -&gt; active access key age 184 days</code></div>
+  <div class="remediation"><strong>Reduce the path</strong><p>Rotate or remove the key, prefer temporary credentials, and move human users to federation or IAM Identity Center where possible.</p></div>
+  <details>
+    <summary>Technical evidence and attribution</summary>
+    <p><strong>Rule:</strong> <code>credential.active-access-key-over-90-days</code></p>
+    <p><strong>Research:</strong> AWS IAM best practices · Datadog State of Cloud Security 2025</p>
+    <pre>[
+  {
+    &quot;access_key_id&quot;: &quot;AKIAEXAMPLEONLY&quot;,
+    &quot;age_days&quot;: 184,
+    &quot;last_used&quot;: {}
+  }
+]</pre>
+  </details>
+</article>
+</div>
     </section>
 
-    <section>
+    <section class="practitioner-only">
       <h2>Collection Limitations</h2>
-      <ul><li>Access Analyzer enrichment unavailable in this synthetic example.</li></ul>
+      <ul><li>Access Analyzer enrichment was not enabled in this synthetic example.</li></ul>
     </section>
   </main>
+  <script>
+(() => {
+  const body = document.body;
+  const modeButtons = Array.from(document.querySelectorAll('[data-mode]'));
+  const setMode = (mode) => {
+    body.classList.toggle('mode-practitioner', mode === 'practitioner');
+    modeButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === mode));
+  };
+  modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
+
+  const search = document.getElementById('path-search');
+  const severity = document.getElementById('severity-filter');
+  const status = document.getElementById('status-filter');
+  const lifecycle = document.getElementById('lifecycle-filter');
+  const count = document.getElementById('visible-count');
+  const cards = Array.from(document.querySelectorAll('.path-card'));
+  const applyFilters = () => {
+    const query = (search?.value || '').trim().toLowerCase();
+    let visible = 0;
+    cards.forEach((card) => {
+      const matches = (!query || card.dataset.search.includes(query))
+        && (!severity || severity.value === 'all' || card.dataset.severity === severity.value)
+        && (!status || status.value === 'all' || card.dataset.status === status.value)
+        && (!lifecycle || lifecycle.value === 'all' || card.dataset.lifecycle === lifecycle.value);
+      card.hidden = !matches;
+      if (matches) visible += 1;
+    });
+    if (count) count.textContent = `${visible} ${visible === 1 ? 'path' : 'paths'}`;
+  };
+  [search, severity, status, lifecycle].filter(Boolean).forEach((control) => control.addEventListener('input', applyFilters));
+})();
+</script>
 </body>
 </html>
