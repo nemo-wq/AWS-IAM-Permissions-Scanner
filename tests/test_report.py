@@ -49,8 +49,32 @@ class ReportTests(unittest.TestCase):
             self.assertTrue((out / "ruleset.json").exists())
             self.assertTrue((out / "graph.json").exists())
             self.assertTrue((out / "summary.json").exists())
+            self.assertTrue((out / "changes.json").exists())
             self.assertTrue((out / "history.json").exists())
             self.assertTrue((out / "evidence" / "collection-warnings.json").exists())
+
+    def test_report_includes_offline_path_filters_and_lifecycle(self):
+        inventory = {
+            "account": {"account_id": "111111111111", "alias": "demo"},
+            "collection": {"generated_at": "2026-07-20T00:00:00+00:00", "warnings": []},
+        }
+        finding = {
+            "id": "iam.attach-user-policy",
+            "title": "Can attach policies to users",
+            "category": "self-escalation",
+            "severity": "critical",
+            "confidence": "high",
+            "status": "confirmed",
+            "lifecycle": "new",
+            "principal": "alice",
+            "principal_type": "user",
+            "attack_path": "user:alice -> iam:AttachUserPolicy",
+            "evidence": [],
+        }
+        rendered = render_html(inventory, [finding], {"rules": []})
+        self.assertIn("Attack Path Inbox", rendered)
+        self.assertIn("path-search", rendered)
+        self.assertIn("Technical evidence and attribution", rendered)
 
     def test_write_outputs_accumulates_history(self):
         with tempfile.TemporaryDirectory() as temp:

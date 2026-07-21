@@ -1,89 +1,172 @@
 # AWS IAM Exposure Review
 
-AWS IAM Exposure Review is a local-first AWS IAM security assessment tool for penetration testers, red teamers, and small cyber teams. It collects read-only IAM authorization data, detects high-risk IAM permissions and privilege escalation paths, and writes a static HTML dashboard/report with practitioner evidence and leadership-friendly risk reduction context.
+AWS IAM Exposure Review is a local-first AWS attack-path assessment tool for penetration testers, red teamers, security engineers, and small cloud security teams.
 
-The v1 focus is not generic CSPM. It is research-backed IAM attack-path review inspired by Rhino Security Labs, NCC Group/PMapper, Bishop Fox, Cloudsplaining, HackTricks, pathfinding.cloud, WithSecure IAMGraph research, Datadog cloud security research, and AWS IAM guidance.
+It answers four questions:
 
-## What It Produces
+1. Which principal can gain more access?
+2. Which inherited permissions, trust, and resource prerequisites create the path?
+3. How confident is the conclusion after boundaries, denies, SCPs, conditions, and collection gaps are considered?
+4. What appeared, worsened, improved, or disappeared since the previous complete scan?
 
-- `report.html`: static dashboard/report for sharing with clients or leadership.
-- `findings.json`: structured machine-readable findings.
-- `findings.csv`: triage-friendly export for spreadsheets and consultants.
-- `findings.sarif`: SARIF export for tooling and workflow integrations.
-- `inventory.json`: normalized IAM inventory.
-- `ruleset.json`: bundled rule metadata used for the scan.
-- `graph.json`: attack graph for downstream visualization or analysis.
-- `summary.json`: scan summary and risk breakdown.
-- `history.json`: scan trend history for repeated runs in the same folder.
-- `evidence/collection-warnings.json`: collection limitations and optional permission failures.
+The project focuses on IAM privilege escalation and evidence rather than broad CSPM or compliance coverage. Rule attribution includes Rhino Security Labs, NCC Group/PMapper, Bishop Fox, Cloudsplaining, HackTricks, pathfinding.cloud, WithSecure IAMGraph research, Datadog Security Labs, and AWS guidance.
 
 ## Example Report
 
-View the synthetic [example report](docs/example-report.html) to see the dashboard, charts, attack-path evidence, and remediation layout.
+View the synthetic [live example report](https://nemo-wq.github.io/AWS-IAM-Permissions-Scanner/example-report.html), or open the [offline report](docs/example-report.html) directly from a clone. It includes the executive summary, change view, charts, path filters, inherited permission evidence, and remediation detail without customer data or remote assets.
 
 ## Install
+
+AWS IAM Exposure Review requires Python 3.10 or newer.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
 pip install -e .
 ```
 
-## Run
-
-Use an existing AWS profile, SSO session, or assumed role with read-only IAM permissions.
+For development:
 
 ```bash
-iam-exposure scan --profile default --output ./reports/demo --format html,json,csv,sarif
+pip install -e ".[dev]"
 ```
 
-The legacy entrypoint still works:
+## Scan An AWS Account
 
-```bash
-python aws_perms.py scan --profile default --output ./reports/demo
-```
-
-Useful options:
+Use an existing AWS profile, SSO session, or read-only assumed role:
 
 ```bash
 iam-exposure scan \
   --profile assessment \
-  --role-arn arn:aws:iam::123456789012:role/SecurityAudit \
-  --region ap-southeast-2 \
   --output ./reports/client-a \
-  --format html,json \
-  --severity-threshold low \
-  --account-alias client-a \
-  --ruleset bundled \
-  --include-aws-managed-policies
+  --format html,json,csv,sarif
 ```
 
-## Rule Coverage
+Assume a dedicated role when reviewing another account:
 
-The bundled offline ruleset covers:
+```bash
+iam-exposure scan \
+  --profile assessment \
+  --role-arn arn:aws:iam::123456789012:role/IAMExposureReviewReadOnly \
+  --region ap-southeast-2 \
+  --output ./reports/client-a
+```
 
-- Direct administrator-equivalent access.
-- IAM self-escalation actions such as policy version changes, inline policy writes, policy attachment, group membership changes, and trust-policy mutation.
-- Principal access paths such as access-key and console-login profile creation.
-- `iam:PassRole` paths through EC2, Lambda, ECS, CloudFormation, CodeBuild, Glue, SageMaker, and App Runner.
-- Existing-resource pivots through Lambda, CodeBuild, and SSM.
-- Cross-account and third-party trust risks, including broad external trust without `sts:ExternalId`.
-- Credential and legacy IAM risk such as long-lived active access keys and console users without MFA.
+The auditable reference policy is in [`iam_exposure/data/reference-scan-role-policy.json`](iam_exposure/data/reference-scan-role-policy.json). A cross-account CloudFormation template with `ExternalId` enforcement is available at [`docs/reference-scan-role.yaml`](docs/reference-scan-role.yaml).
 
-Rules include source attribution so findings explain whether they map to public research, AWS guidance, or project logic. The tool ships a bundled snapshot for deterministic offline scans; online rule updates are intentionally out of scope for v1.
+The legacy entry point remains available:
 
-## Safety Model
+```bash
+python aws_perms.py scan --profile assessment --output ./reports/client-a
+```
 
-- Local-only execution.
-- No telemetry.
-- No hosted backend.
-- No AWS resource mutation.
-- No exploit commands in reports.
-- Optional AWS API failures degrade into collection warnings.
+## Compare Assessments
 
-## Tests
+Repeated scans in the same output directory automatically produce lifecycle changes and trend history. You can also compare any two report folders:
+
+```bash
+iam-exposure diff ./reports/before ./reports/after --output ./changes.json
+```
+
+Paths receive stable fingerprints and one of these lifecycle states:
+
+- `new`, `open`, or `reopened`;
+- `worsened` or `improved` when severity, confidence, or exploitability changes;
+- `resolved` only after a complete compatible scan;
+- `unverified` when degraded collection prevents a safe resolution conclusion.
+
+## Inspect And Update Rules
+
+The bundled rules are deterministic and work offline:
+
+```bash
+iam-exposure rules list
+iam-exposure rules verify
+```
+
+Updates are never automatic. Install a local or HTTPS bundle only with its published SHA-256 digest:
+
+```bash
+iam-exposure rules update \
+  --source ./ruleset.json \
+  --sha256 <published-digest>
+```
+
+## Outputs
+
+- `report.html`: self-contained executive and practitioner report.
+- `findings.json`: current findings with fingerprints and lifecycle state.
+- `changes.json`: new, worsened, improved, resolved, reopened, and unverified paths.
+- `inventory.json`: normalized authorization inventory.
+- `graph.json`: typed principal, policy, action, resource, path, and capability graph.
+- `summary.json`: chart data, risk counts, coverage, and trends.
+- `history.json`: recent assessment trend points.
+- `ruleset.json`: exact rules used for the assessment.
+- `findings.csv` and `findings.sarif`: workflow integration exports.
+- `evidence/collection-warnings.json`: collection limitations.
+
+These files may contain sensitive account IDs, ARNs, principal names, policy evidence, and attack paths. Common output locations and filenames are excluded from Git by default.
+
+## Effective Permission Model
+
+The evaluator accounts for:
+
+- inline and managed identity policies;
+- user-to-group inheritance;
+- explicit denies;
+- permissions boundaries;
+- service control policies when Organizations access is available;
+- session and resource policy scopes when included by inventory enrichment;
+- `Action`, `NotAction`, `Resource`, `NotResource`, and common conditions;
+- PassRole targets, service prerequisites, credentials, and external trust.
+
+Conditions and target-specific policies cannot always be proven from static account metadata. The report records these uncertainties and lowers the path to `potential` instead of silently treating it as confirmed.
+
+See the [coverage matrix](docs/COVERAGE.md), [rule standard](docs/RULES.md), and synthetic [benchmark scenarios](benchmarks/scenarios).
+
+## Public Python API
+
+Versioned interfaces are exported from `iam_exposure` and `iam_exposure.api`:
+
+```python
+from iam_exposure import (
+    build_attack_graph,
+    collect_inventory,
+    diff_snapshots,
+    evaluate_snapshot,
+    find_attack_paths,
+    load_and_verify_rule_bundle,
+    render_report,
+)
+```
+
+Hosted products should consume released package versions instead of copying the detection engine. The open-source package does not require an account, commercial license, hosted backend, or telemetry.
+
+## Security And Trust
+
+- Read-only collection and no AWS mutation.
+- No exploit commands in generated reports.
+- No telemetry or hidden uploads.
+- Explicit, digest-pinned rule updates.
+- HTML escaping for collected AWS and rule content.
+- Resolution protection when collection is incomplete.
+
+Review the [architecture](docs/ARCHITECTURE.md), [threat model](docs/THREAT_MODEL.md), and [security policy](SECURITY.md) before using the tool with sensitive environments.
+
+## Development
 
 ```bash
 python -m unittest discover -s tests
+ruff check iam_exposure tests scripts
+mypy iam_exposure
+bandit -q -r iam_exposure
+python -m build
 ```
+
+Regenerate the synthetic report with:
+
+```bash
+python -m scripts.generate_example_report
+```
+
+Contributions are welcome under the [Apache-2.0 license](LICENSE). Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting rule or engine changes.

@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible problem using synthetic data
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, customer inventories, or assessment reports. Use private vulnerability reporting for security issues.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Synthetic reproduction
+    validations:
+      required: true

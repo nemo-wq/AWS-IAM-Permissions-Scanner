@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Read-only reference role for AWS IAM Exposure Review
+
+Parameters:
+  TrustedAccountId:
+    Type: String
+    AllowedPattern: "^[0-9]{12}$"
+    Description: AWS account that is permitted to run the scanner
+  ExternalId:
+    Type: String
+    MinLength: 16
+    NoEcho: true
+    Description: Unique external ID supplied by the scanner operator or hosted service
+  RoleName:
+    Type: String
+    Default: IAMExposureReviewReadOnly
+
+Resources:
+  ScanRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${TrustedAccountId}:root"
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref ExternalId
+      Policies:
+        - PolicyName: IAMExposureReviewReadOnly
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: IdentityAndCredentialMetadata
+                Effect: Allow
+                Action:
+                  - iam:GenerateCredentialReport
+                  - iam:GetAccountAuthorizationDetails
+                  - iam:GetAccessKeyLastUsed
+                  - iam:GetCredentialReport
+                  - iam:GetLoginProfile
+                  - iam:ListAccessKeys
+                  - iam:ListAccountAliases
+                  - iam:ListInstanceProfiles
+                  - iam:ListMFADevices
+                Resource: "*"
+              - Sid: CallerIdentity
+                Effect: Allow
+                Action: sts:GetCallerIdentity
+                Resource: "*"
+              - Sid: NativeAnalyzerEnrichment
+                Effect: Allow
+                Action:
+                  - access-analyzer:ListAnalyzers
+                  - access-analyzer:ListFindings
+                Resource: "*"
+              - Sid: OrganizationConstraintEnrichment
+                Effect: Allow
+                Action:
+                  - organizations:DescribeOrganization
+                  - organizations:DescribePolicy
+                  - organizations:ListParents
+                  - organizations:ListPoliciesForTarget
+                Resource: "*"
+
+Outputs:
+  RoleArn:
+    Value: !GetAtt ScanRole.Arn
+  RoleName:
+    Value: !Ref ScanRole

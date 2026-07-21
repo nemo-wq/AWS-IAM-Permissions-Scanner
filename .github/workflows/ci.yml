@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m unittest discover -s tests
+      - run: python -m compileall -q iam_exposure tests scripts
+      - if: matrix.python-version == '3.13'
+        run: ruff check iam_exposure tests scripts
+      - if: matrix.python-version == '3.13'
+        run: mypy iam_exposure
+      - if: matrix.python-version == '3.13'
+        run: bandit -q -r iam_exposure
+      - if: matrix.python-version == '3.13'
+        run: pip-audit --skip-editable
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/

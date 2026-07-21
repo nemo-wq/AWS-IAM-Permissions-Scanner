@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List
+from collections.abc import Iterable
+from typing import Any
 
 
-def build_attack_graph(inventory: Dict[str, Any]) -> Dict[str, Any]:
-    nodes: Dict[str, Dict[str, Any]] = {}
-    edges: List[Dict[str, Any]] = []
+def build_attack_graph(inventory: dict[str, Any], findings: Iterable[dict[str, Any]] | None = None) -> dict[str, Any]:
+    nodes: dict[str, dict[str, Any]] = {}
+    edges: list[dict[str, Any]] = []
 
     def add_node(node_id: str, node_type: str, label: str, **attrs: Any) -> None:
         node = nodes.setdefault(node_id, {"id": node_id, "type": node_type, "label": label})
@@ -74,9 +75,21 @@ def build_attack_graph(inventory: Dict[str, Any]) -> Dict[str, Any]:
 
     for grant in inventory.get("grants", []):
         principal_id = _principal_id(grant["principal_type"], grant["principal_name"])
+        if grant.get("principal_type") == "global":
+            add_node(principal_id, "organization-constraint", "Organization controls")
         grant_node_id = f"grant:{grant['source']}:{grant.get('statement_index', 'na')}"
-        add_node(grant_node_id, "grant", grant["source"], inherited_via=grant.get("inherited_via"))
-        add_edge(principal_id, grant_node_id, "grants", grant.get("inherited_via") or grant["source"])
+        effect = grant.get("effect", "allow")
+        scope = grant.get("policy_scope", "identity")
+        add_node(
+            grant_node_id,
+            "grant",
+            grant["source"],
+            inherited_via=grant.get("inherited_via"),
+            effect=effect,
+            policy_scope=scope,
+        )
+        relationship = "denies" if effect == "deny" else ("limits" if scope in {"permissions-boundary", "scp", "session"} else "grants")
+        add_edge(principal_id, grant_node_id, relationship, grant.get("inherited_via") or grant["source"])
 
         policy_node_id = _policy_node_id_from_source(grant["source"])
         add_node(policy_node_id, "policy-source", grant["source"])
@@ -85,7 +98,11 @@ def build_attack_graph(inventory: Dict[str, Any]) -> Dict[str, Any]:
         for action in grant.get("actions", []):
             action_id = f"action:{action}"
             add_node(action_id, "action", action)
-            add_edge(policy_node_id, action_id, "allows", action)
+            add_edge(policy_node_id, action_id, "denies" if effect == "deny" else "allows", action)
+        for resource in grant.get("resources", []):
+            resource_id = f"resource-scope:{resource}"
+            add_node(resource_id, "resource-scope", resource)
+            add_edge(grant_node_id, resource_id, "scoped-to", resource)
 
     for finding in inventory.get("access_analyzer_findings", []):
         resource_id = f"resource:{finding.get('resource', finding.get('id', 'unknown'))}"
@@ -94,11 +111,28 @@ def build_attack_graph(inventory: Dict[str, Any]) -> Dict[str, Any]:
         add_node(finding_id, "access-analyzer-finding", finding.get("id", "finding"), finding_type=finding.get("findingType"))
         add_edge(finding_id, resource_id, "analyzes", finding.get("findingType", "finding"))
 
+    for finding in findings or []:
+        path_id = f"attack-path:{finding.get('fingerprint', finding.get('id', 'unknown'))}"
+        add_node(
+            path_id,
+            "attack-path",
+            finding.get("title", finding.get("id", "attack path")),
+            severity=finding.get("severity"),
+            confidence=finding.get("confidence"),
+            status=finding.get("status"),
+        )
+        principal_id = _principal_id(finding.get("principal_type", "unknown"), finding.get("principal", "unknown"))
+        add_edge(principal_id, path_id, "can-reach", finding.get("status", "potential"))
+        capability = finding.get("target_capability", finding.get("title", "privilege"))
+        capability_id = f"capability:{capability}"
+        add_node(capability_id, "capability", capability)
+        add_edge(path_id, capability_id, "gains", capability)
+
     return {"nodes": list(nodes.values()), "edges": edges}
 
 
-def graph_statistics(graph: Dict[str, Any]) -> Dict[str, Any]:
-    counts = defaultdict(int)
+def graph_statistics(graph: dict[str, Any]) -> dict[str, Any]:
+    counts: defaultdict[str, int] = defaultdict(int)
     for node in graph.get("nodes", []):
         counts[node.get("type", "unknown")] += 1
     return {
@@ -113,6 +147,9 @@ def graph_statistics(graph: Dict[str, Any]) -> Dict[str, Any]:
         "grant_nodes": counts.get("grant", 0),
         "trusted_principal_nodes": counts.get("trusted-principal", 0),
         "access_key_nodes": counts.get("access-key", 0),
+        "attack_path_nodes": counts.get("attack-path", 0),
+        "capability_nodes": counts.get("capability", 0),
+        "resource_scope_nodes": counts.get("resource-scope", 0),
     }
 
 
@@ -124,7 +161,7 @@ def _trust_node_id(principal: str) -> str:
     return f"trusted:{principal}"
 
 
-def _managed_policy_id(policy: Dict[str, Any]) -> str:
+def _managed_policy_id(policy: dict[str, Any]) -> str:
     return f"policy:managed:{policy.get('Arn') or policy.get('PolicyName')}"
 
 
@@ -132,7 +169,7 @@ def _policy_node_id_from_source(source: str) -> str:
     return f"policy-source:{source}"
 
 
-def _statements(document: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _statements(document: dict[str, Any]) -> list[dict[str, Any]]:
     statements = document.get("Statement") if isinstance(document, dict) else []
     if statements is None:
         return []
@@ -143,12 +180,12 @@ def _statements(document: Dict[str, Any]) -> List[Dict[str, Any]]:
     return []
 
 
-def _principals_from_statement(statement: Dict[str, Any]) -> List[str]:
+def _principals_from_statement(statement: dict[str, Any]) -> list[str]:
     principal = statement.get("Principal")
     if principal == "*":
         return ["*"]
     if isinstance(principal, dict):
-        principals: List[str] = []
+        principals: list[str] = []
         for value in principal.values():
             if isinstance(value, list):
                 principals.extend(str(item) for item in value)

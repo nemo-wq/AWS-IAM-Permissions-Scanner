@@ -1,0 +1,41 @@
+{
+  "name": "Permissions boundary blocks PassRole",
+  "inventory": {
+    "schema_version": "2.0",
+    "account": {"account_id": "111111111111", "alias": "benchmark-boundary"},
+    "users": [{"name": "bob", "access_keys": [], "password_enabled": false, "mfa_enabled": true}],
+    "groups": [],
+    "roles": [{"name": "PrivilegedLambda", "arn": "arn:aws:iam::111111111111:role/PrivilegedLambda"}],
+    "principals": [{"type": "user", "name": "bob"}],
+    "grants": [
+      {
+        "principal_type": "user",
+        "principal_name": "bob",
+        "source": "user-inline:bob/Lambda",
+        "policy_scope": "identity",
+        "effect": "allow",
+        "statement_index": 0,
+        "actions": ["iam:PassRole", "lambda:CreateFunction"],
+        "not_actions": [],
+        "resources": ["*"],
+        "not_resources": [],
+        "conditions": {}
+      },
+      {
+        "principal_type": "user",
+        "principal_name": "bob",
+        "source": "permissions-boundary:DeveloperBoundary",
+        "policy_scope": "permissions-boundary",
+        "effect": "allow",
+        "statement_index": 0,
+        "actions": ["lambda:CreateFunction"],
+        "not_actions": [],
+        "resources": ["*"],
+        "not_resources": [],
+        "conditions": {}
+      }
+    ]
+  },
+  "expected_present": [],
+  "expected_absent": ["passrole.lambda-create-function"]
+}

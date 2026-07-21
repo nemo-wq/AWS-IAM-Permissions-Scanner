@@ -10,7 +10,10 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .coverage
+coverage.xml
 htmlcov/
+.tox/
+.nox/
 
 # Virtual environments and local installs
 .venv/
@@ -21,12 +24,43 @@ ENV/
 *.egg-info/
 build/
 dist/
+site/
+*.db
+*.sqlite
+*.sqlite3
 
 # Local configuration and secrets
 .env
 .env.*
 !.env.example
+.envrc
+.env.local
+.env.*.local
+.secrets/
+.secrets.*
+.local/
 .aws/
+aws-config
+aws-credentials
+credentials
+credentials.*
+config.aws
+*.secret
+*.secrets
+*.token
+*.tokens
+*.vault
+*.enc
+*.age
+*.asc
+*.gpg
+*.kubeconfig
+kubeconfig
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+known_hosts
 *.pem
 *.key
 *.p12
@@ -36,8 +70,43 @@ dist/
 *.jks
 *.kdb
 *.tfvars
+*.tfvars.json
 *.tfstate
 *.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Local databases, logs, and temporary working state
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.log
+logs/
+tmp/
+temp/
+.tmp/
+.cache/
+.pytest_cache/
+.hypothesis/
+*.bak
+*.backup
+*.orig
+
+# Package manager and local runtime artifacts
+.npmrc
+.pypirc
+.python-version
+pip-wheel-metadata/
+node_modules/
+.next/
+out/
+*.tsbuildinfo
 
 # Generated IAM Exposure Review outputs.
 # These can contain account IDs, ARNs, principal names, findings, and graph data.
@@ -55,7 +124,36 @@ iam-exposure-reports/
 /history.json
 /graph.json
 /evidence/collection-warnings.json
+scan-history/
+scan-results/
+snapshots/
+snapshot-history/
+customer-data/
+customer-data-*/
+client-data/
+client-data-*/
+exports/
+evidence/
+**/evidence/
+**/inventory.json
+**/findings.json
+**/findings.csv
+**/findings.sarif
+**/summary.json
+**/history.json
+**/graph.json
+**/collection-warnings.json
+*.har
+*.pcap
+*.pcapng
 !docs/example-report.html
+
+# Local product concepts and private planning mockups.
+# Do not publish these from the public repository.
+_concepts/
+concepts/
+product-concepts/
+private-concepts/
 
 # Local editor metadata
 .idea/
